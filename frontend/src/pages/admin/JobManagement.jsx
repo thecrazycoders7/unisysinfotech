@@ -207,25 +207,26 @@ export const JobManagement = () => {
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${isDark ? 'bg-slate-900 text-white' : 'bg-slate-50'} flex items-center justify-center`}>
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <p className="text-slate-400 mt-4">Loading jobs...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-slate-900 text-white' : 'bg-slate-50'}`}>
-      <div className="max-w-7xl mx-auto p-6">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] p-6">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Job Management</h1>
-            <p className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-              Manage job postings and view applications
-            </p>
+            <h1 className="text-3xl font-bold text-white mb-2">Job Management</h1>
+            <p className="text-slate-300">Manage job postings and applications</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all duration-300 shadow-lg hover:scale-105"
           >
             <Plus size={20} />
             Add New Job
@@ -233,32 +234,30 @@ export const JobManagement = () => {
         </div>
 
         {/* Jobs Grid */}
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {jobs.map((job) => (
             <div
               key={job._id}
-              className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-lg p-6 shadow-lg`}
+              className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-2xl font-bold">{job.title}</h3>
+                  <div className="flex items-center gap-3 mb-3">
+                    <h3 className="text-2xl font-bold text-white drop-shadow-lg">{job.title}</h3>
                     {job.jobCode && (
-                      <span className={`px-2 py-1 rounded text-xs font-mono ${
-                        isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
-                      }`}>
+                      <span className="px-2 py-1 rounded text-xs font-mono bg-blue-500/20 text-blue-200">
                         {job.jobCode}
                       </span>
                     )}
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                       job.isActive 
-                        ? 'bg-green-500/20 text-green-600' 
-                        : 'bg-red-500/20 text-red-600'
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-red-500/20 text-red-400'
                     }`}>
                       {job.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <div className={`flex flex-wrap gap-4 text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-200">
                     <span>📍 {job.location}</span>
                     <span>💼 {job.department}</span>
                     <span>⏰ {job.type}</span>
@@ -266,45 +265,37 @@ export const JobManagement = () => {
                     <span>📅 Posted: {new Date(job.postedDate).toLocaleDateString()}</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button
                     onClick={() => viewApplications(job)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      isDark 
-                        ? 'bg-blue-600 hover:bg-blue-700' 
-                        : 'bg-blue-500 hover:bg-blue-600'
-                    } text-white relative`}
+                    className="p-3 rounded-lg transition-all duration-300 bg-blue-600 hover:bg-blue-700 text-white relative hover:scale-105 shadow-lg"
                     title="View Applications"
                   >
-                    <Users size={18} />
+                    <Users size={20} />
                     {getApplicationCount(job._id) > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold shadow-md">
                         {getApplicationCount(job._id)}
                       </span>
                     )}
                   </button>
                   <button
                     onClick={() => handleEdit(job)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      isDark 
-                        ? 'bg-slate-700 hover:bg-slate-600' 
-                        : 'bg-slate-200 hover:bg-slate-300'
-                    }`}
+                    className="p-3 rounded-lg transition-all duration-300 bg-white/10 hover:bg-white/20 text-white hover:scale-105 shadow-lg"
                     title="Edit"
                   >
-                    <Edit2 size={18} />
+                    <Edit2 size={20} />
                   </button>
                   <button
                     onClick={() => handleDelete(job._id)}
-                    className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                    className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-300 hover:scale-105 shadow-lg"
                     title="Delete"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={20} />
                   </button>
                 </div>
               </div>
 
-              <p className={`mb-4 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+              <p className="mb-4 text-slate-100 leading-relaxed">
                 {job.description.substring(0, 200)}...
               </p>
 
@@ -312,23 +303,19 @@ export const JobManagement = () => {
                 {job.skills.slice(0, 5).map((skill, idx) => (
                   <span
                     key={idx}
-                    className={`px-3 py-1 rounded-full text-sm ${
-                      isDark 
-                        ? 'bg-slate-700 text-slate-300' 
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
+                    className="px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-200 font-medium"
                   >
                     {skill}
                   </span>
                 ))}
                 {job.skills.length > 5 && (
-                  <span className={`px-3 py-1 rounded-full text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span className="px-3 py-1 rounded-full text-sm text-slate-200 font-medium">
                     +{job.skills.length - 5} more
                   </span>
                 )}
               </div>
 
-              <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <div className="text-sm text-slate-200 font-medium">
                 Experience: {job.experience} | {job.salary && `Salary: ${job.salary}`}
               </div>
             </div>
@@ -336,8 +323,8 @@ export const JobManagement = () => {
         </div>
 
         {jobs.length === 0 && (
-          <div className={`text-center py-12 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            <p className="text-xl">No jobs posted yet. Click "Add New Job" to get started.</p>
+          <div className="text-center py-12">
+            <p className="text-xl text-white">No jobs posted yet. Click "Add New Job" to get started.</p>
           </div>
         )}
       </div>
@@ -345,10 +332,10 @@ export const JobManagement = () => {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-lg p-6 max-w-3xl w-full my-8 max-h-[90vh] overflow-y-auto`}>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 max-w-3xl w-full my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">{editingJob ? 'Edit Job' : 'Add New Job'}</h2>
-              <button onClick={closeModal} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}>
+              <h2 className="text-2xl font-bold text-white">{editingJob ? 'Edit Job' : 'Add New Job'}</h2>
+              <button onClick={closeModal} className="p-2 rounded-lg hover:bg-white/10 text-white">
                 <X size={24} />
               </button>
             </div>
@@ -356,43 +343,34 @@ export const JobManagement = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Basic Information</h3>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Basic Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {editingJob && formData.jobCode && (
                     <div>
-                      <label className="block text-sm font-medium mb-2">Job Code</label>
+                      <label className="block text-sm font-medium mb-2 text-slate-200">Job Code</label>
                       <input
                         type="text"
                         value={formData.jobCode}
                         disabled
-                        className={`w-full px-4 py-2 rounded-lg border font-mono ${
-                          isDark 
-                            ? 'bg-slate-700 border-slate-600 text-slate-400' 
-                            : 'bg-slate-100 border-slate-300 text-slate-500'
-                        } cursor-not-allowed`}
+                        className="w-full px-4 py-2 rounded-lg border font-mono bg-white/5 border-white/20 text-slate-400 cursor-not-allowed"
                       />
                     </div>
                   )}
                   
                   <div className={editingJob && formData.jobCode ? '' : 'md:col-span-2'}>
-                    <label className="block text-sm font-medium mb-2">Job Title *</label>
+                    <label className="block text-sm font-medium mb-2 text-white">Job Title *</label>
                     <input
                       type="text"
                       name="title"
                       value={formData.title}
                       onChange={handleInputChange}
                       required
-                      placeholder="e.g., Senior Full Stack Developer"
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Department *</label>
+                    <label className="block text-sm font-medium mb-2 text-white">Department *</label>
                     <input
                       type="text"
                       name="department"
@@ -400,16 +378,12 @@ export const JobManagement = () => {
                       onChange={handleInputChange}
                       required
                       placeholder="e.g., Engineering"
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Location *</label>
+                    <label className="block text-sm font-medium mb-2 text-white">Location *</label>
                     <input
                       type="text"
                       name="location"
@@ -417,26 +391,18 @@ export const JobManagement = () => {
                       onChange={handleInputChange}
                       required
                       placeholder="e.g., Remote, New York, Hybrid"
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Job Type *</label>
+                    <label className="block text-sm font-medium mb-2 text-white">Job Type *</label>
                     <select
                       name="type"
                       value={formData.type}
                       onChange={handleInputChange}
                       required
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     >
                       <option value="Full-time">Full-time</option>
                       <option value="Part-time">Part-time</option>
@@ -444,29 +410,29 @@ export const JobManagement = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Posting Date *</label>
+                    <label className="block text-sm font-medium mb-2 text-white">Posting Date *</label>
                     <input
                       type="date"
                       name="postedDate"
                       value={formData.postedDate ? formData.postedDate.substring(0, 10) : ''}
                       onChange={handleInputChange}
                       required
-                      className={`w-full px-4 py-2 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">End Date</label>
+                    <label className="block text-sm font-medium mb-2 text-white">End Date</label>
                     <input
                       type="date"
                       name="endDate"
                       value={formData.endDate ? formData.endDate.substring(0, 10) : ''}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-2 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-medium mb-2 text-white">
                       Years of Experience {formData.type !== 'Internship' && '*'}
                     </label>
                     <input
@@ -478,46 +444,34 @@ export const JobManagement = () => {
                       min="0"
                       step="0.5"
                       placeholder="e.g., 3"
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
-                    <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <p className="text-xs mt-1 text-slate-300">
                       {formData.type === 'Internship' ? 'Optional for internships' : 'Enter total years of experience'}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Salary Range</label>
+                    <label className="block text-sm font-medium mb-2 text-white">Salary Range</label>
                     <input
                       type="text"
                       name="salary"
                       value={formData.salary}
                       onChange={handleInputChange}
                       placeholder="e.g., $80,000 - $120,000"
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Display Order</label>
+                    <label className="block text-sm font-medium mb-2 text-white">Display Order</label>
                     <input
                       type="number"
                       name="displayOrder"
                       value={formData.displayOrder}
                       onChange={handleInputChange}
                       min="0"
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                   </div>
 
@@ -538,9 +492,9 @@ export const JobManagement = () => {
 
               {/* Job Description */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Job Description</h3>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Job Description</h3>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Overview *</label>
+                  <label className="block text-sm font-medium mb-2 text-white">Overview *</label>
                   <textarea
                     name="description"
                     value={formData.description}
@@ -548,18 +502,14 @@ export const JobManagement = () => {
                     required
                     rows="4"
                     placeholder="Brief overview of the position..."
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      isDark 
-                        ? 'bg-slate-700 border-slate-600 text-white' 
-                        : 'bg-white border-slate-300'
-                    } focus:outline-none focus:border-indigo-600`}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
               </div>
 
               {/* Responsibilities */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Responsibilities *</h3>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Responsibilities *</h3>
                 {formData.responsibilities.map((resp, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <input
@@ -567,11 +517,7 @@ export const JobManagement = () => {
                       value={resp}
                       onChange={(e) => handleArrayChange('responsibilities', index, e.target.value)}
                       placeholder="Describe a key responsibility..."
-                      className={`flex-1 px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                     {formData.responsibilities.length > 1 && (
                       <button
@@ -587,7 +533,7 @@ export const JobManagement = () => {
                 <button
                   type="button"
                   onClick={() => addArrayItem('responsibilities')}
-                  className={`text-sm ${isDark ? 'text-indigo-400' : 'text-indigo-600'} hover:underline`}
+                  className="text-sm text-blue-400 hover:text-blue-300 hover:underline transition-colors"
                 >
                   + Add Responsibility
                 </button>
@@ -595,7 +541,7 @@ export const JobManagement = () => {
 
               {/* Expected Skills / Experience */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Expected Skills / Experience *</h3>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Expected Skills / Experience *</h3>
                 {formData.expectedSkills.map((skill, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <input
@@ -603,11 +549,7 @@ export const JobManagement = () => {
                       value={skill}
                       onChange={(e) => handleArrayChange('expectedSkills', index, e.target.value)}
                       placeholder="e.g., 3+ years of React development"
-                      className={`flex-1 px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                     {formData.expectedSkills.length > 1 && (
                       <button
@@ -623,7 +565,7 @@ export const JobManagement = () => {
                 <button
                   type="button"
                   onClick={() => addArrayItem('expectedSkills')}
-                  className={`text-sm ${isDark ? 'text-indigo-400' : 'text-indigo-600'} hover:underline`}
+                  className="text-sm text-blue-400 hover:text-blue-300 hover:underline transition-colors"
                 >
                   + Add Expected Skill
                 </button>
@@ -631,7 +573,7 @@ export const JobManagement = () => {
 
               {/* Qualifications */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Qualifications *</h3>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Qualifications *</h3>
                 {formData.qualifications.map((qual, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <input
@@ -639,11 +581,7 @@ export const JobManagement = () => {
                       value={qual}
                       onChange={(e) => handleArrayChange('qualifications', index, e.target.value)}
                       placeholder="e.g., Bachelor's degree in Computer Science or equivalent"
-                      className={`flex-1 px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                     {formData.qualifications.length > 1 && (
                       <button
@@ -659,7 +597,7 @@ export const JobManagement = () => {
                 <button
                   type="button"
                   onClick={() => addArrayItem('qualifications')}
-                  className={`text-sm ${isDark ? 'text-indigo-400' : 'text-indigo-600'} hover:underline`}
+                  className="text-sm text-blue-400 hover:text-blue-300 hover:underline transition-colors"
                 >
                   + Add Qualification
                 </button>
@@ -667,7 +605,7 @@ export const JobManagement = () => {
 
               {/* Technical Stack */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Technical Stack / Tools *</h3>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Technical Stack / Tools *</h3>
                 {formData.technicalStack.map((tech, index) => (
                   <div key={index} className="flex gap-2 mb-2">
                     <input
@@ -675,11 +613,7 @@ export const JobManagement = () => {
                       value={tech}
                       onChange={(e) => handleArrayChange('technicalStack', index, e.target.value)}
                       placeholder="e.g., React, Node.js, PostgreSQL"
-                      className={`flex-1 px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                     {formData.technicalStack.length > 1 && (
                       <button
@@ -695,7 +629,7 @@ export const JobManagement = () => {
                 <button
                   type="button"
                   onClick={() => addArrayItem('technicalStack')}
-                  className={`text-sm ${isDark ? 'text-indigo-400' : 'text-indigo-600'} hover:underline`}
+                  className="text-sm text-blue-400 hover:text-blue-300 hover:underline transition-colors"
                 >
                   + Add Technology/Tool
                 </button>
@@ -703,8 +637,8 @@ export const JobManagement = () => {
 
               {/* Skills (for display/filtering) */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Key Skills (Tags) *</h3>
-                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Key Skills (Tags) *</h3>
+                <p className="text-sm text-slate-300">
                   Short skill tags for filtering and display
                 </p>
                 {formData.skills.map((skill, index) => (
@@ -714,11 +648,7 @@ export const JobManagement = () => {
                       value={skill}
                       onChange={(e) => handleArrayChange('skills', index, e.target.value)}
                       placeholder="e.g., React, JavaScript, AWS"
-                      className={`flex-1 px-4 py-2 rounded-lg border ${
-                        isDark 
-                          ? 'bg-slate-700 border-slate-600 text-white' 
-                          : 'bg-white border-slate-300'
-                      } focus:outline-none focus:border-indigo-600`}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     />
                     {formData.skills.length > 1 && (
                       <button
@@ -734,7 +664,7 @@ export const JobManagement = () => {
                 <button
                   type="button"
                   onClick={() => addArrayItem('skills')}
-                  className={`text-sm ${isDark ? 'text-indigo-400' : 'text-indigo-600'} hover:underline`}
+                  className="text-sm text-blue-400 hover:text-blue-300 hover:underline transition-colors"
                 >
                   + Add Skill
                 </button>
@@ -742,50 +672,42 @@ export const JobManagement = () => {
 
               {/* Additional Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Additional Information</h3>
+                <h3 className="text-lg font-semibold border-b border-white/20 pb-2 text-white">Additional Information</h3>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Additional Info / Notes</label>
+                  <label className="block text-sm font-medium mb-2 text-white">Additional Info / Notes</label>
                   <textarea
                     name="additionalInfo"
                     value={formData.additionalInfo}
                     onChange={handleInputChange}
                     rows="3"
                     placeholder="Any additional information about the role, benefits, work environment, etc..."
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      isDark 
-                        ? 'bg-slate-700 border-slate-600 text-white' 
-                        : 'bg-white border-slate-300'
-                    } focus:outline-none focus:border-indigo-600`}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Predicted Feedback</label>
+                  <label className="block text-sm font-medium mb-2 text-white">Predicted Feedback</label>
                   <textarea
                     name="predictedFeedback"
                     value={formData.predictedFeedback || ''}
                     onChange={handleInputChange}
                     rows="2"
                     placeholder="Predicted feedback for this job posting..."
-                    className={`w-full px-4 py-2 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-4 border-t">
+              <div className="flex gap-4 pt-4 border-t border-white/20">
                 <button
                   type="submit"
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all shadow-lg hover:scale-105"
                 >
                   {editingJob ? 'Update Job' : 'Create Job'}
                 </button>
                 <button
                   type="button"
                   onClick={closeModal}
-                  className={`px-6 py-3 rounded-lg font-semibold ${
-                    isDark 
-                      ? 'bg-slate-700 hover:bg-slate-600' 
-                      : 'bg-slate-200 hover:bg-slate-300'
-                  }`}
+                  className="px-6 py-3 rounded-xl font-semibold bg-white/10 hover:bg-white/20 text-white transition-all shadow-lg hover:scale-105"
                 >
                   Cancel
                 </button>

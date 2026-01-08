@@ -79,6 +79,8 @@ export const HomePage = () => {
   const isDark = useThemeStore((state) => state.isDark);
   const [showFloatingCTA, setShowFloatingCTA] = useState(false);
   const [clientLogos, setClientLogos] = useState([]);
+  const [logosLoading, setLogosLoading] = useState(true);
+  const [logosError, setLogosError] = useState(null);
 
   // Show floating CTA after scrolling
   useEffect(() => {
@@ -93,10 +95,18 @@ export const HomePage = () => {
   useEffect(() => {
     const fetchLogos = async () => {
       try {
+        setLogosLoading(true);
+        setLogosError(null);
         const response = await clientLogosApi.getAll();
+        console.log('Client logos fetched successfully:', response.data.length);
         setClientLogos(response.data);
       } catch (error) {
         console.error('Error fetching client logos:', error);
+        setLogosError(error.message);
+        // Set empty array on error so it doesn't keep showing loading
+        setClientLogos([]);
+      } finally {
+        setLogosLoading(false);
       }
     };
     fetchLogos();
@@ -137,7 +147,7 @@ export const HomePage = () => {
   const allServices = [
     {
       id: 0,
-      title: 'Software Dvlt',
+      title: 'Software Development',
       shortTitle: 'Software Development',
       icon: Code,
       description: 'Software Development services is your possibility to outsource software engineering and support, and get maintainable, secure and impactful software at the best price.',
@@ -177,8 +187,8 @@ export const HomePage = () => {
     },
     {
       id: 4,
-      title: 'Database ADM',
-      shortTitle: 'Database Administrator',
+      title: 'Database Administration',
+      shortTitle: 'Database Administration',
       icon: Database,
       description: 'A database administrator (DBA) is a person who manages, maintains, and secures data in one or more data systems so that a user can perform analysis for business operations. DBAs take care of data storage, organization, presentation, utilization, and analysis from a technical perspective.',
       detail: 'The DBA job is transitioning from being database-centric to data-centric, as Data Management becomes more autonomous.',
@@ -362,7 +372,15 @@ export const HomePage = () => {
             </h2>
           </div>
 
-          {clientLogos.length > 0 ? (
+          {logosLoading ? (
+            <div className={`text-center py-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p>Loading client logos...</p>
+            </div>
+          ) : logosError ? (
+            <div className={`text-center py-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p>Unable to load client logos at this time.</p>
+            </div>
+          ) : clientLogos.length > 0 ? (
             <div className="relative">
               {/* Gradient overlays for smooth fade effect */}
               <div className={`absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none ${isDark ? 'bg-gradient-to-r from-slate-900 to-transparent' : 'bg-gradient-to-r from-white to-transparent'}`}></div>
@@ -380,12 +398,13 @@ export const HomePage = () => {
                     <img 
                       src={logo.logoUrl} 
                       alt={logo.name}
-                      className="max-w-full h-16 object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
+                      className="max-w-full max-h-16 object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `https://via.placeholder.com/200x80/${isDark ? '1e293b' : 'f1f5f9'}/${isDark ? '00BCD4' : '0f172a'}?text=${encodeURIComponent(logo.name)}`;
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
                       }}
                     />
+                    <span className={`hidden text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{logo.name}</span>
                   </div>
                 ))}
                 {/* Duplicate set for infinite scroll */}
@@ -398,19 +417,20 @@ export const HomePage = () => {
                     <img 
                       src={logo.logoUrl} 
                       alt={logo.name}
-                      className="max-w-full h-16 object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
+                      className="max-w-full max-h-16 object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
                       onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `https://via.placeholder.com/200x80/${isDark ? '1e293b' : 'f1f5f9'}/${isDark ? '00BCD4' : '0f172a'}?text=${encodeURIComponent(logo.name)}`;
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
                       }}
                     />
+                    <span className={`hidden text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{logo.name}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
             <div className={`text-center py-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              <p>Loading client logos...</p>
+              <p>No client logos available.</p>
             </div>
           )}
         </div>

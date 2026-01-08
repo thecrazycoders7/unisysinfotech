@@ -30,7 +30,9 @@ export const AdminUserManagement = () => {
     role: 'employee',
     employerId: '',
     designation: '',
-    department: ''
+    department: '',
+    endClient: '',
+    endClientReportingMail: ''
   });
 
   useEffect(() => {
@@ -62,7 +64,22 @@ export const AdminUserManagement = () => {
     setLoading(true);
 
     try {
-      await adminAPI.createUser(formData);
+      // Prepare payload - only include employerId for employees
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        designation: formData.designation || undefined,
+        department: formData.department || undefined
+      };
+
+      // Only add employerId if role is employee
+      if (formData.role === 'employee' && formData.employerId) {
+        payload.employerId = formData.employerId;
+      }
+
+      await adminAPI.createUser(payload);
       toast.success(`${formData.role} account created successfully!`);
       setShowCreateModal(false);
       resetForm();
@@ -71,7 +88,8 @@ export const AdminUserManagement = () => {
         fetchEmployers(); // Refresh employers list
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create user');
+      console.error('Create user error:', error.response?.data);
+      toast.error(error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || 'Failed to create user');
     } finally {
       setLoading(false);
     }
@@ -139,7 +157,9 @@ export const AdminUserManagement = () => {
       role: 'employee',
       employerId: '',
       designation: '',
-      department: ''
+      department: '',
+      endClient: '',
+      endClientReportingMail: ''
     });
   };
 
@@ -153,21 +173,21 @@ export const AdminUserManagement = () => {
   };
 
   return (
-    <div className={`p-6 ${isDark ? 'bg-slate-900' : 'bg-slate-50'} min-h-screen`}>
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h1 className="text-3xl font-bold mb-2 text-white">
               User Management
             </h1>
-            <p className={`${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            <p className="text-slate-300">
               Create and manage employer and employee accounts
             </p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-lg"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
           >
             <UserPlus size={20} />
             Create User
@@ -175,34 +195,34 @@ export const AdminUserManagement = () => {
         </div>
 
         {/* Filters */}
-        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl p-4 shadow-lg mb-6`}>
-          <div className="flex gap-3">
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-lg mb-6">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={() => setFilterRole('')}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
                 filterRole === '' 
-                  ? 'bg-indigo-600 text-white' 
-                  : (isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-200 text-slate-900 hover:bg-slate-300')
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'bg-white/10 text-white hover:bg-white/20'
               }`}
             >
               All Users
             </button>
             <button
               onClick={() => setFilterRole('employer')}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
                 filterRole === 'employer' 
-                  ? 'bg-indigo-600 text-white' 
-                  : (isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-200 text-slate-900 hover:bg-slate-300')
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'bg-white/10 text-white hover:bg-white/20'
               }`}
             >
               Employers
             </button>
             <button
               onClick={() => setFilterRole('employee')}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${
                 filterRole === 'employee' 
-                  ? 'bg-indigo-600 text-white' 
-                  : (isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-200 text-slate-900 hover:bg-slate-300')
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'bg-white/10 text-white hover:bg-white/20'
               }`}
             >
               Employees
@@ -211,26 +231,26 @@ export const AdminUserManagement = () => {
         </div>
 
         {/* Users Table */}
-        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-lg overflow-hidden`}>
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className={isDark ? 'bg-slate-900' : 'bg-slate-100'}>
+              <thead className="bg-white/5 border-b border-white/10">
                 <tr>
-                  <th className={`px-6 py-4 text-left font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>User</th>
-                  <th className={`px-6 py-4 text-left font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Role</th>
-                  <th className={`px-6 py-4 text-left font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Employer</th>
-                  <th className={`px-6 py-4 text-center font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Status</th>
-                  <th className={`px-6 py-4 text-center font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Actions</th>
+                  <th className="px-6 py-4 text-left font-semibold text-white">User</th>
+                  <th className="px-6 py-4 text-left font-semibold text-white">Role</th>
+                  <th className="px-6 py-4 text-left font-semibold text-white">Employer</th>
+                  <th className="px-6 py-4 text-center font-semibold text-white">Status</th>
+                  <th className="px-6 py-4 text-center font-semibold text-white">Actions</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}>
+              <tbody className="divide-y divide-white/10">
                 {users.map(user => (
-                  <tr key={user._id} className={isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}>
-                    <td className={`px-6 py-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <tr key={user._id} className="hover:bg-white/5 transition-colors duration-200">
+                    <td className="px-6 py-4 text-white">
                       <div className="font-semibold">{user.name}</div>
-                      <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{user.email}</div>
+                      <div className="text-sm text-slate-300">{user.email}</div>
                       {user.designation && (
-                        <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>{user.designation}</div>
+                        <div className="text-xs text-slate-400">{user.designation}</div>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -238,7 +258,7 @@ export const AdminUserManagement = () => {
                         {user.role}
                       </span>
                     </td>
-                    <td className={`px-6 py-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <td className="px-6 py-4 text-white">
                       {user.employerId?.name || '-'}
                     </td>
                     <td className="px-6 py-4 text-center">

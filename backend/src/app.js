@@ -11,6 +11,9 @@ import jobRoutes from './routes/jobRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import timeCardRoutes from './routes/timeCardRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
+import contactMessageRoutes from './routes/contactMessageRoutes.js';
+import invoiceRoutes from './routes/invoiceRoutes.js';
+import passwordChangeRoutes from './routes/passwordChangeRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -25,8 +28,9 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase payload limit for base64 images
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -38,6 +42,9 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/client-logos', clientLogoRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/contact-messages', contactMessageRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/password-change', passwordChangeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -24,7 +24,11 @@ export const LoginPage = () => {
       toast.success('Logged in successfully!');
       navigate(response.data.user.role === 'admin' ? '/admin' : '/user');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+        toast.error('Cannot connect to server. Please ensure the backend server is running on port 5001.');
+      } else {
+        toast.error(error.response?.data?.message || 'Login failed');
+      }
     } finally {
       setLoading(false);
     }

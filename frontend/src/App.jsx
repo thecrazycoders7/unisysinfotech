@@ -10,24 +10,40 @@ import { ScrollToTop } from './components/ScrollToTop.jsx';
 
 // Public Pages
 import { HomePage } from './pages/HomePage.jsx';
+import { HomePageNew } from './pages/HomePageNew.jsx';
 import { AboutPage } from './pages/AboutPage.jsx';
+import { AboutPageNew } from './pages/AboutPageNew.jsx';
 import { ServicesPage } from './pages/ServicesPage.jsx';
+import { ServicesPageNew } from './pages/ServicesPageNew.jsx';
 import { SoftwareDevelopmentPage } from './pages/SoftwareDevelopmentPage.jsx';
+import { SoftwareDevelopmentPageNew } from './pages/SoftwareDevelopmentPageNew.jsx';
 import { ProfessionalServicesPage } from './pages/ProfessionalServicesPage.jsx';
+import { ProfessionalServicesPageNew } from './pages/ProfessionalServicesPageNew.jsx';
 import { DBAPage } from './pages/DBAPage.jsx';
+import { DBAPageNew } from './pages/DBAPageNew.jsx';
 import { QAPage } from './pages/QAPage.jsx';
+import { QAPageNew } from './pages/QAPageNew.jsx';
 import { BusinessIntelligencePage } from './pages/BusinessIntelligencePage.jsx';
+import { BusinessIntelligencePageNew } from './pages/BusinessIntelligencePageNew.jsx';
 import { DataSciencePage } from './pages/DataSciencePage.jsx';
+import { DataSciencePageNew } from './pages/DataSciencePageNew.jsx';
 import { CRMPage } from './pages/CRMPage.jsx';
+import { CRMPageNew } from './pages/CRMPageNew.jsx';
 import { CloudServicesPage } from './pages/CloudServicesPage.jsx';
+import { CloudServicesPageNew } from './pages/CloudServicesPageNew.jsx';
 import { DevOpsPage } from './pages/DevOpsPage.jsx';
+import { DevOpsPageNew } from './pages/DevOpsPageNew.jsx';
 import { ContactPage } from './pages/ContactPage.jsx';
+import { ContactPageNew } from './pages/ContactPageNew.jsx';
 import { CareersPage } from './pages/CareersPage.jsx';
+import { CareersPageNew } from './pages/CareersPageNew.jsx';
+import { PrivacyPolicy } from './pages/PrivacyPolicy.jsx';
+import { TermsConditions } from './pages/TermsConditions.jsx';
+import { CookiePolicy } from './pages/CookiePolicy.jsx';
 
 // Auth Pages
 import { LoginPage } from './pages/LoginPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
-import { RoleSelectionPage } from './pages/RoleSelectionPage.jsx';
 import { RoleLoginPage } from './pages/RoleLoginPage.jsx';
 
 // Admin Portal
@@ -38,6 +54,12 @@ import { AdminReports } from './pages/admin/AdminReports.jsx';
 import ClientLogoManagement from './pages/admin/ClientLogoManagement.jsx';
 import { JobManagement } from './pages/admin/JobManagement.jsx';
 import { AdminUserManagement } from './pages/admin/AdminUserManagement.jsx';
+import { ContactMessages } from './pages/admin/ContactMessages.jsx';
+import { InvoicesPayroll } from './pages/admin/InvoicesPayroll.jsx';
+import { PasswordChangeApproval } from './pages/admin/PasswordChangeApproval.jsx';
+
+// Common Pages
+import { ChangePassword } from './pages/common/ChangePassword.jsx';
 
 // User Portal
 import UserLayout from './pages/user/UserLayout.jsx';
@@ -50,6 +72,7 @@ import { EmployeeTimeCards } from './pages/employee/EmployeeTimeCards.jsx';
 
 // Employer Portal
 import { EmployerDashboard } from './pages/employer/EmployerDashboard.jsx';
+import { EmployerTimeCards } from './pages/employer/EmployerTimeCards.jsx';
 
 function App() {
   return (
@@ -59,24 +82,26 @@ function App() {
         <Routes>
           {/* Public Layout */}
           <Route element={<Layout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/services" element={<ServicesPage />} />
-            <Route path="/services/software-development" element={<SoftwareDevelopmentPage />} />
-            <Route path="/services/professional" element={<ProfessionalServicesPage />} />
-            <Route path="/services/dba" element={<DBAPage />} />
-            <Route path="/services/qa" element={<QAPage />} />
-            <Route path="/services/business-intelligence" element={<BusinessIntelligencePage />} />
-            <Route path="/services/data-science" element={<DataSciencePage />} />
-            <Route path="/services/crm" element={<CRMPage />} />
-            <Route path="/services/cloud-services" element={<CloudServicesPage />} />
-            <Route path="/services/devops" element={<DevOpsPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/careers" element={<CareersPage />} />
+            <Route path="/" element={<HomePageNew />} />
+            <Route path="/about" element={<AboutPageNew />} />
+            <Route path="/services" element={<ServicesPageNew />} />
+            <Route path="/services/software-development" element={<SoftwareDevelopmentPageNew />} />
+            <Route path="/services/professional" element={<ProfessionalServicesPageNew />} />
+            <Route path="/services/dba" element={<DBAPageNew />} />
+            <Route path="/services/qa" element={<QAPageNew />} />
+            <Route path="/services/business-intelligence" element={<BusinessIntelligencePageNew />} />
+            <Route path="/services/data-science" element={<DataSciencePageNew />} />
+            <Route path="/services/crm" element={<CRMPageNew />} />
+            <Route path="/services/cloud-services" element={<CloudServicesPageNew />} />
+            <Route path="/services/devops" element={<DevOpsPageNew />} />
+            <Route path="/contact" element={<ContactPageNew />} />
+            <Route path="/careers" element={<CareersPageNew />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsConditions />} />
+            <Route path="/cookie-policy" element={<CookiePolicy />} />
           </Route>
 
-          {/* Auth Routes - Role Selection and Login */}
-          <Route path="/login" element={<RoleSelectionPage />} />
+          {/* Auth Routes - Role-based Login */}
           <Route path="/login/:role" element={<RoleLoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
@@ -94,6 +119,10 @@ function App() {
             <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/client-logos" element={<ClientLogoManagement />} />
             <Route path="/admin/jobs" element={<JobManagement />} />
+            <Route path="/admin/contact-messages" element={<ContactMessages />} />
+            <Route path="/admin/invoices" element={<InvoicesPayroll />} />
+            <Route path="/admin/password-requests" element={<PasswordChangeApproval />} />
+            <Route path="/admin/change-password" element={<ChangePassword />} />
           </Route>
 
           {/* Employer Portal */}
@@ -105,6 +134,22 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/employer/timecards"
+            element={
+              <PrivateRoute requiredRole="employer">
+                <EmployerTimeCards />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/employer/change-password"
+            element={
+              <PrivateRoute requiredRole="employer">
+                <ChangePassword />
+              </PrivateRoute>
+            }
+          />
 
           {/* Employee Portal */}
           <Route
@@ -112,6 +157,14 @@ function App() {
             element={
               <PrivateRoute requiredRole="employee">
                 <EmployeeTimeCards />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/employee/change-password"
+            element={
+              <PrivateRoute requiredRole="employee">
+                <ChangePassword />
               </PrivateRoute>
             }
           />

@@ -13,8 +13,7 @@ const clientLogoSchema = new mongoose.Schema({
   },
   logoUrl: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   description: {
     type: String,

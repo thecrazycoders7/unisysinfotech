@@ -29,7 +29,11 @@ export const timeCardAPI = {
   // Employer routes
   getEmployerEntries: (params) => api.get('/timecards/employer/entries', { params }),
   getEmployees: () => api.get('/timecards/employer/employees'),
-  getWeeklySummary: (startDate) => api.get('/timecards/employer/weekly-summary', { params: { startDate } })
+  getWeeklySummary: (startDate) => api.get('/timecards/employer/weekly-summary', { params: { startDate } }),
+  
+  // Admin routes
+  getAllEntries: (params) => api.get('/timecards/admin/all-entries', { params }),
+  getStats: (params) => api.get('/timecards/admin/stats', { params })
 };
 
 // Client APIs (Admin only)
@@ -82,4 +86,40 @@ export const jobsApi = {
   getApplications: (id) => api.get(`/jobs/admin/${id}/applications`),
   getAllApplications: () => api.get('/jobs/admin/applications/all'),
   updateApplicationStatus: (id, status) => api.put(`/jobs/admin/applications/${id}`, { status })
+};
+
+// Contact Message APIs
+export const contactMessageApi = {
+  // Public route
+  submit: (data) => api.post('/contact-messages', data),
+  
+  // Admin routes
+  getAll: (params) => api.get('/contact-messages', { params }),
+  getById: (id) => api.get(`/contact-messages/${id}`),
+  updateStatus: (id, status) => api.put(`/contact-messages/${id}`, { status }),
+  delete: (id) => api.delete(`/contact-messages/${id}`)
+};
+
+// Invoice APIs (Admin only)
+export const invoiceAPI = {
+  getAll: (params) => api.get('/invoices', { params }),
+  getById: (id) => api.get(`/invoices/${id}`),
+  create: (data) => api.post('/invoices', data),
+  update: (id, data) => api.put(`/invoices/${id}`, data),
+  delete: (id) => api.delete(`/invoices/${id}`),
+  getPending: () => api.get('/invoices/pending/tracker'),
+  updateDeductions: (id, data) => api.put(`/invoices/${id}/deductions`, data)
+};
+
+// Password Change APIs
+export const passwordChangeAPI = {
+  // All users
+  requestChange: (data) => api.post('/password-change/request', data),
+  getMyRequests: () => api.get('/password-change/my-requests'),
+  cancelRequest: (id) => api.delete(`/password-change/cancel/${id}`),
+  
+  // Admin only
+  getAllRequests: (params) => api.get('/password-change/requests', { params }),
+  approveRequest: (id) => api.put(`/password-change/approve/${id}`),
+  rejectRequest: (id, data) => api.put(`/password-change/reject/${id}`, data)
 };

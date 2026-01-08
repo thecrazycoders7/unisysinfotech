@@ -1,6 +1,6 @@
 import express from 'express';
-import HoursLog from '../models/HoursLog.js';
-import Client from '../models/Client.js';
+import TimeCard from '../models/TimeCard.js';
+import User from '../models/User.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -21,12 +21,11 @@ router.get('/hours-summary', protect, authorize('admin'), async (req, res) => {
       }
     }
 
-    const summary = await HoursLog.aggregate([
+    const summary = await TimeCard.aggregate([
       { $match: query },
       {
         $group: {
           _id: {
-            userId: '$userId',
             month: { $dateToString: { format: '%Y-%m', date: '$date' } }
           },
           totalHours: { $sum: '$hoursWorked' },
@@ -48,10 +47,11 @@ router.get('/hours-summary', protect, authorize('admin'), async (req, res) => {
 // Get client activity report (admin only)
 router.get('/client-activity', protect, authorize('admin'), async (req, res) => {
   try {
-    const activity = await HoursLog.aggregate([
+    // Get all timecards and group by employee
+    const activity = await TimeCard.aggregate([
       {
         $group: {
-          _id: '$clientId',
+          _id: '$employeeId',
           totalHours: { $sum: '$hoursWorked' },
           count: { $sum: 1 }
         }
@@ -59,19 +59,23 @@ router.get('/client-activity', protect, authorize('admin'), async (req, res) => 
       { $sort: { totalHours: -1 } }
     ]);
 
-    // Populate client names
+    // Populate employee names
     const report = await Promise.all(
       activity.map(async (item) => {
         if (item._id) {
-          const client = await Client.findById(item._id);
+          const employee = await User.findById(item._id).select('name email');
           return {
-            clientId: item._id,
-            clientName: client?.name || 'Unknown',
+            employeeId: item._id,
+            clientName: employee?.name || 'Unknown Employee',
             totalHours: item.totalHours,
             count: item.count
           };
         }
-        return item;
+        return {
+          clientName: 'Unassigned',
+          totalHours: item.totalHours,
+          count: item.count
+        };
       })
     );
 
@@ -92,18 +96,18 @@ router.get('/my-weekly-summary', protect, async (req, res) => {
     startOfWeek.setDate(today.getDate() - today.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
 
-    const logs = await HoursLog.find({
-      userId: req.user.id,
+    const timeCards = await TimeCard.find({
+      employeeId: req.user.id,
       date: { $gte: startOfWeek }
     });
 
-    const totalHours = logs.reduce((sum, log) => sum + log.hoursWorked, 0);
+    const totalHours = timeCards.reduce((sum, card) => sum + card.hoursWorked, 0);
 
     res.status(200).json({
       success: true,
       totalHours: Math.round(totalHours * 10) / 10,
-      entries: logs.length,
-      logs
+      entries: timeCards.length,
+      timeCards
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -122,20 +126,20 @@ router.get('/my-monthly-summary', protect, async (req, res) => {
     const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
     endOfMonth.setHours(23, 59, 59, 999);
 
-    const logs = await HoursLog.find({
-      userId: req.user.id,
+    const timeCards = await TimeCard.find({
+      employeeId: req.user.id,
       date: { $gte: startOfMonth, $lte: endOfMonth }
     }).sort({ date: 1 });
 
-    const totalHours = logs.reduce((sum, log) => sum + log.hoursWorked, 0);
+    const totalHours = timeCards.reduce((sum, card) => sum + card.hoursWorked, 0);
 
     res.status(200).json({
       success: true,
       month: currentMonth + 1,
       year: currentYear,
       totalHours: Math.round(totalHours * 10) / 10,
-      entries: logs.length,
-      logs
+      entries: timeCards.length,
+      timeCards
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

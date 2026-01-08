@@ -25,20 +25,6 @@ export const Footer = () => {
             <p className="text-gray-400 mb-4">
               Leading IT solutions provider transforming businesses through innovative technology and expert consulting.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="hover:text-secondary transition-colors duration-300 hover:scale-110 transform">
-                <Linkedin size={20} />
-              </a>
-              <a href="#" className="hover:text-secondary transition-colors duration-300 hover:scale-110 transform">
-                <Twitter size={20} />
-              </a>
-              <a href="#" className="hover:text-secondary transition-colors duration-300 hover:scale-110 transform">
-                <Facebook size={20} />
-              </a>
-              <a href="#" className="hover:text-secondary transition-colors duration-300 hover:scale-110 transform">
-                <Instagram size={20} />
-              </a>
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -78,29 +64,29 @@ export const Footer = () => {
             <h3 className="text-lg font-bold mb-6">Services</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300">
+                <Link to="/services" className="text-gray-400 hover:text-secondary transition-colors duration-300">
                   Software Development
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300">
+                <Link to="/services" className="text-gray-400 hover:text-secondary transition-colors duration-300">
                   Cloud Services
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300">
+                <Link to="/services" className="text-gray-400 hover:text-secondary transition-colors duration-300">
                   DevOps & CI/CD
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300">
+                <Link to="/services" className="text-gray-400 hover:text-secondary transition-colors duration-300">
                   Data Science
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300">
+                <Link to="/services" className="text-gray-400 hover:text-secondary transition-colors duration-300">
                   QA Automation
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -116,12 +102,6 @@ export const Footer = () => {
                 </span>
               </li>
               <li className="flex items-center space-x-3">
-                <Phone size={20} className="text-secondary flex-shrink-0" />
-                <a href="tel:+19105551234" className="text-gray-400 hover:text-secondary transition-colors duration-300">
-                  +1 (910) 555-1234
-                </a>
-              </li>
-              <li className="flex items-center space-x-3">
                 <Mail size={20} className="text-secondary flex-shrink-0" />
                 <a href="mailto:info@unisysinfotech.com" className="text-gray-400 hover:text-secondary transition-colors duration-300">
                   info@unisysinfotech.com
@@ -135,23 +115,9 @@ export const Footer = () => {
       {/* Footer Bottom */}
       <div className={`${isDark ? 'bg-slate-800 border-slate-800' : 'bg-slate-800'} border-t`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex justify-center">
             <div className="text-gray-400 text-center md:text-left animate-slide-up">
-              <p>&copy; {currentYear} UNISYS INFOTECH. All rights reserved.</p>
-            </div>
-            <div className="flex justify-center space-x-6 animate-slide-up" style={{animationDelay: '0.1s'}}>
-              <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300 text-sm">
-                Privacy Policy
-              </a>
-              <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300 text-sm">
-                Terms & Conditions
-              </a>
-              <a href="#" className="text-gray-400 hover:text-secondary transition-colors duration-300 text-sm">
-                Cookie Policy
-              </a>
-            </div>
-            <div className="text-gray-400 text-center md:text-right text-sm animate-slide-up" style={{animationDelay: '0.2s'}}>
-              <p>Designed with ❤️ for innovation</p>
+              <p>&copy; 2022 UNISYS INFOTECH. All rights reserved.</p>
             </div>
           </div>
         </div>

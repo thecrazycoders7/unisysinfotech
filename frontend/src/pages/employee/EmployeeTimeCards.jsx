@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useThemeStore } from '../../store/index.js';
+import { useThemeStore, useAuthStore } from '../../store/index.js';
 import { timeCardAPI } from '../../api/endpoints.js';
 import { toast } from 'react-toastify';
-import { Calendar, Clock, Save, Trash2, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Calendar, Clock, Save, Trash2, ChevronLeft, ChevronRight, ArrowLeft, LogOut, Home, Lock } from 'lucide-react';
 
 /**
  * Employee TimeCard Page
@@ -17,13 +17,15 @@ import { Calendar, Clock, Save, Trash2, ChevronLeft, ChevronRight, ArrowLeft } f
 export const EmployeeTimeCards = () => {
   const navigate = useNavigate();
   const isDark = useThemeStore((state) => state.isDark);
+  const { logout, user } = useAuthStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [timeCards, setTimeCards] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [hoursWorked, setHoursWorked] = useState('');
-  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch time entries for current month
   useEffect(() => {
@@ -40,33 +42,84 @@ export const EmployeeTimeCards = () => {
         endDate: endDate.toISOString().split('T')[0]
       });
       
-      setTimeCards(response.data.timeCards);
+      console.log('Fetched timecards:', response.data.timeCards);
+      const cards = response.data.timeCards || [];
+      setTimeCards(cards);
+      
+      // Calculate and log totals
+      const totalHours = cards.reduce((sum, tc) => sum + (tc.hoursWorked || 0), 0);
+      console.log('Total hours:', totalHours, 'Days:', cards.length);
     } catch (error) {
+      console.error('Fetch timecards error:', error);
       toast.error('Failed to fetch time entries');
     }
   };
 
   const handleSubmitHours = async (e) => {
     e.preventDefault();
-    if (!selectedDate || !hoursWorked) return;
+    if (!selectedDate || !hoursWorked) {
+      toast.error('Please enter hours worked');
+      return;
+    }
+
+    const hours = parseFloat(hoursWorked);
+    if (isNaN(hours) || hours <= 0 || hours > 24) {
+      toast.error('Hours must be between 0 and 24');
+      return;
+    }
 
     setLoading(true);
     try {
-      await timeCardAPI.submitHours({
-        date: selectedDate.toISOString().split('T')[0],
-        hoursWorked: parseFloat(hoursWorked),
-        notes
-      });
+      // Format date in local timezone to prevent day shift
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
       
-      toast.success('Hours submitted successfully!');
+      const payload = {
+        date: formattedDate,
+        hoursWorked: hours,
+        notes: '' // Backend expects notes field even if empty
+      };
+      
+      console.log('Submitting hours:', payload);
+      const response = await timeCardAPI.submitHours(payload);
+      console.log('Response:', response);
+      
+      toast.success(editingEntryId ? 'Hours updated successfully!' : 'Hours submitted successfully!');
       setShowModal(false);
       setHoursWorked('');
-      setNotes('');
-      fetchTimeCards();
+      setEditingEntryId(null);
+      await fetchTimeCards(); // Wait for data refresh to complete
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit hours');
+      console.error('Submit hours error:', error);
+      const errorMsg = error.response?.data?.message || 
+                       error.response?.data?.errors?.[0]?.msg ||
+                       error.message ||
+                       'Failed to submit hours';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEntry = async () => {
+    if (!editingEntryId) return;
+    
+    if (!window.confirm('Are you sure you want to delete this entry?')) return;
+
+    setDeleting(true);
+    try {
+      await timeCardAPI.deleteEntry(editingEntryId);
+      toast.success('Entry deleted successfully!');
+      setShowModal(false);
+      setHoursWorked('');
+      setEditingEntryId(null);
+      fetchTimeCards();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete entry');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -84,11 +137,11 @@ export const EmployeeTimeCards = () => {
         toast.warning('This entry is locked and cannot be edited');
         return;
       }
+      setEditingEntryId(existing._id);
       setHoursWorked(existing.hoursWorked.toString());
-      setNotes(existing.notes || '');
     } else {
+      setEditingEntryId(null);
       setHoursWorked('');
-      setNotes('');
     }
     
     setShowModal(true);
@@ -134,56 +187,85 @@ export const EmployeeTimeCards = () => {
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    toast.success('Logged out successfully');
+  };
+
   return (
-    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] text-white p-4 md:p-6">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <button
-            onClick={() => navigate('/role-selection')}
-            className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg transition-colors ${
-              isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-            }`}
-          >
-            <ArrowLeft size={20} />
-            <span className="text-sm font-medium">Back to Role Selection</span>
-          </button>
-          <h1 className={`text-2xl md:text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-2 md:gap-4">
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 rounded-lg transition-colors border border-blue-500/30 text-sm"
+              >
+                <Home size={18} />
+                <span className="font-medium">Home</span>
+              </button>
+              <button
+                onClick={() => navigate('/employee/change-password')}
+                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 rounded-lg transition-colors border border-purple-500/30 text-sm"
+              >
+                <Lock size={18} />
+                <span className="font-medium hidden sm:inline">Change Password</span>
+                <span className="font-medium sm:hidden">Password</span>
+              </button>
+            </div>
+            <div className="flex items-center justify-between sm:justify-end gap-4">
+              <div className="text-left sm:text-right">
+                <div className="text-xs md:text-sm text-slate-400">Welcome back,</div>
+                <div className="font-semibold text-sm md:text-base">{user?.name || 'Employee'}</div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg transition-colors border border-red-500/30 text-sm"
+              >
+                <LogOut size={18} />
+                <span className="font-medium">Logout</span>
+              </button>
+            </div>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">
             My TimeCards
           </h1>
-          <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <p className="text-slate-400">
             Click on a date to log your working hours
           </p>
         </div>
 
         {/* Calendar Controls */}
-        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl p-4 md:p-6 shadow-lg mb-4`}>
+        <div className="bg-[#1a2942]/50 backdrop-blur-sm border border-blue-900/30 rounded-xl p-4 md:p-6 shadow-lg mb-4">
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={() => changeMonth(-1)}
-              className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+              className="p-2 rounded-lg hover:bg-blue-600/20 transition-colors"
             >
-              <ChevronLeft size={20} className={isDark ? 'text-white' : 'text-slate-900'} />
+              <ChevronLeft size={20} className="text-white" />
             </button>
             
-            <h2 className={`text-lg md:text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h2 className="text-lg md:text-xl font-bold text-white">
               {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
             </h2>
             
             <button
               onClick={() => changeMonth(1)}
-              className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
+              className="p-2 rounded-lg hover:bg-blue-600/20 transition-colors"
             >
-              <ChevronRight size={20} className={isDark ? 'text-white' : 'text-slate-900'} />
+              <ChevronRight size={20} className="text-white" />
             </button>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1 md:gap-2">
+          {/* Calendar Grid - Compact */}
+          <div className="grid grid-cols-7 gap-1">
             {/* Day headers */}
             {dayNames.map(day => (
-              <div key={day} className={`text-center text-xs font-semibold py-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {day.slice(0, 3)}
+              <div key={day} className="text-center text-[10px] font-semibold py-1 text-slate-400">
+                {day.slice(0, 1)}
               </div>
             ))}
             
@@ -198,25 +280,25 @@ export const EmployeeTimeCards = () => {
                   onClick={() => date && handleDateClick(date)}
                   disabled={!date}
                   className={`
-                    aspect-square p-1 md:p-2 rounded-lg transition-all relative text-center
+                    h-12 p-1 rounded-md transition-all relative text-center
                     ${!date ? 'invisible' : ''}
-                    ${isToday ? 'ring-2 ring-indigo-600' : ''}
-                    ${entry ? (isDark ? 'bg-indigo-900/50 hover:bg-indigo-900/70' : 'bg-indigo-100 hover:bg-indigo-200') : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200')}
+                    ${isToday ? 'ring-1 ring-blue-500' : ''}
+                    ${entry ? 'bg-blue-600/30 hover:bg-blue-600/40 border border-blue-500/50' : 'bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/30'}
                     ${entry?.isLocked ? 'opacity-60 cursor-not-allowed' : ''}
                   `}
                 >
                   {date && (
                     <>
-                      <div className={`text-xs md:text-sm font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      <div className="text-[10px] font-medium text-white">
                         {date.getDate()}
                       </div>
                       {entry && (
-                        <div className="text-[10px] md:text-xs font-bold text-indigo-600">
+                        <div className="text-[9px] font-bold text-blue-400">
                           {entry.hoursWorked}h
                         </div>
                       )}
                       {entry?.isLocked && (
-                        <div className="absolute top-0 right-0 text-xs">
+                        <div className="absolute top-0 right-0 text-[8px]">
                           🔒
                         </div>
                       )}
@@ -229,26 +311,26 @@ export const EmployeeTimeCards = () => {
         </div>
 
         {/* Summary Stats */}
-        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl p-4 md:p-6 shadow-lg`}>
-          <h3 className={`text-lg md:text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <div className="bg-[#1a2942]/50 backdrop-blur-sm border border-blue-900/30 rounded-xl p-4 md:p-6 shadow-lg">
+          <h3 className="text-lg md:text-xl font-bold mb-4 text-white">
             Monthly Summary
           </h3>
           <div className="grid grid-cols-3 gap-3 md:gap-4">
-            <div className={`p-3 md:p-4 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-              <div className={`text-xs md:text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Total Hours</div>
-              <div className={`text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <div className="p-3 md:p-4 rounded-lg bg-blue-600/20 border border-blue-500/30">
+              <div className="text-xs md:text-sm text-slate-400">Total Hours</div>
+              <div className="text-xl md:text-2xl font-bold text-white">
                 {timeCards.reduce((sum, tc) => sum + tc.hoursWorked, 0).toFixed(1)}
               </div>
             </div>
-            <div className={`p-3 md:p-4 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-              <div className={`text-xs md:text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Days Worked</div>
-              <div className={`text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <div className="p-3 md:p-4 rounded-lg bg-blue-600/20 border border-blue-500/30">
+              <div className="text-xs md:text-sm text-slate-400">Days Worked</div>
+              <div className="text-xl md:text-2xl font-bold text-white">
                 {timeCards.length}
               </div>
             </div>
-            <div className={`p-3 md:p-4 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-              <div className={`text-xs md:text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Avg Hours/Day</div>
-              <div className={`text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <div className="p-3 md:p-4 rounded-lg bg-blue-600/20 border border-blue-500/30">
+              <div className="text-xs md:text-sm text-slate-400">Avg Hours/Day</div>
+              <div className="text-xl md:text-2xl font-bold text-white">
                 {timeCards.length > 0 ? (timeCards.reduce((sum, tc) => sum + tc.hoursWorked, 0) / timeCards.length).toFixed(1) : '0.0'}
               </div>
             </div>
@@ -258,40 +340,28 @@ export const EmployeeTimeCards = () => {
 
       {/* Hours Entry Modal */}
       {showModal && selectedDate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl p-6 max-w-md w-full`}>
-            <h3 className={`text-xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Log Hours - {selectedDate.toLocaleDateString()}
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a2942] border border-blue-900/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold mb-4 text-white">
+              {editingEntryId ? 'Edit Hours' : 'Log Hours'} - {selectedDate.toLocaleDateString()}
             </h3>
             
             <form onSubmit={handleSubmitHours} className="space-y-4">
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-slate-700'}`}>
+                <label className="block text-sm font-medium mb-2 text-white">
                   Hours Worked *
                 </label>
-                  <input
+                <input
                   type="number"
-                  step="1"
+                  step="0.5"
                   min="0"
                   max="24"
                   value={hoursWorked}
                   onChange={(e) => setHoursWorked(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
+                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-blue-900/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-lg"
+                  placeholder="8.0"
                   required
-                />
-              </div>
-              
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-slate-700'}`}>
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows="3"
-                  maxLength="500"
-                  className={`w-full px-4 py-2 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
-                  placeholder="Any notes about this day's work..."
+                  autoFocus
                 />
               </div>
               
@@ -299,14 +369,32 @@ export const EmployeeTimeCards = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 shadow-lg flex items-center justify-center gap-2"
                 >
-                  {loading ? 'Saving...' : 'Save Hours'}
+                  <Save size={18} />
+                  {loading ? 'Saving...' : (editingEntryId ? 'Update' : 'Save')}
                 </button>
+                
+                {editingEntryId && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteEntry}
+                    disabled={deleting}
+                    className="px-4 py-3 rounded-lg font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <Trash2 size={18} />
+                    {deleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                )}
+                
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className={`px-6 py-2 rounded-lg font-semibold ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'}`}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingEntryId(null);
+                    setHoursWorked('');
+                  }}
+                  className="px-6 py-3 rounded-lg font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
                 >
                   Cancel
                 </button>

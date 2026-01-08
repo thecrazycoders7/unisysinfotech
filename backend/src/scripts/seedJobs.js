@@ -36,6 +36,21 @@ const jobs = [
       'Excellent problem-solving and communication skills',
       'Ability to work independently and in a team environment'
     ],
+    expectedSkills: [
+      'React.js',
+      'Node.js',
+      'Express.js',
+      'MongoDB',
+      'JavaScript/TypeScript'
+    ],
+    technicalStack: [
+      'React.js',
+      'Node.js',
+      'Express.js',
+      'MongoDB',
+      'REST APIs',
+      'Git'
+    ],
     skills: [
       'React.js',
       'Node.js',
@@ -48,6 +63,7 @@ const jobs = [
       'Tailwind CSS',
       'AWS/Azure'
     ],
+    yearsOfExperience: 5,
     experience: '5+ years',
     salary: '$100,000 - $140,000',
     isActive: true,
@@ -80,6 +96,21 @@ const jobs = [
       'Experience with CI/CD tools and practices',
       'Excellent troubleshooting and problem-solving skills'
     ],
+    expectedSkills: [
+      'AWS/Azure/GCP',
+      'Docker',
+      'Kubernetes',
+      'Terraform',
+      'CI/CD'
+    ],
+    technicalStack: [
+      'AWS/Azure/GCP',
+      'Docker',
+      'Kubernetes',
+      'Terraform',
+      'Jenkins/GitLab CI',
+      'Python'
+    ],
     skills: [
       'AWS/Azure/GCP',
       'Docker',
@@ -92,6 +123,7 @@ const jobs = [
       'Monitoring (Prometheus, Grafana)',
       'Git'
     ],
+    yearsOfExperience: 3,
     experience: '3+ years',
     salary: '$90,000 - $130,000',
     isActive: true,
@@ -102,7 +134,7 @@ const jobs = [
 
 const seedJobs = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected...');
 
     // Clear existing jobs

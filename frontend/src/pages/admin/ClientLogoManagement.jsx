@@ -14,7 +14,6 @@ export const ClientLogoManagement = () => {
     industry: '',
     logoUrl: '',
     description: '',
-    // founded, headquarters, trustSignal removed
     displayOrder: 0,
     isActive: true
   });
@@ -46,6 +45,13 @@ export const ClientLogoManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.name || !formData.industry || !formData.logoUrl) {
+      alert('Please fill in all required fields and upload a logo');
+      return;
+    }
+    
     try {
       if (editingId) {
         await clientLogosApi.update(editingId, formData);
@@ -58,7 +64,8 @@ export const ClientLogoManagement = () => {
       fetchLogos();
     } catch (error) {
       console.error('Error saving logo:', error);
-      alert('Failed to save client logo');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save client logo';
+      alert(`Error: ${errorMessage}`);
     }
   };
 
@@ -105,13 +112,16 @@ export const ClientLogoManagement = () => {
   }
 
   return (
-    <div className={`min-h-screen p-6 ${isDark ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Client Logo Management</h1>
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Client Logo Management</h1>
+            <p className="text-slate-300">Manage client logos displayed on the website</p>
+          </div>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="btn-primary flex items-center gap-2"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105"
           >
             {showAddForm ? <X size={20} /> : <Plus size={20} />}
             {showAddForm ? 'Cancel' : 'Add New Logo'}
@@ -120,78 +130,88 @@ export const ClientLogoManagement = () => {
 
         {/* Add/Edit Form */}
         {showAddForm && (
-          <div className={`p-6 rounded-lg mb-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-lg`}>
-            <h2 className="text-xl font-bold mb-4">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 mb-6">
+            <h2 className="text-xl font-bold mb-4 text-white">
               {editingId ? 'Edit Client Logo' : 'Add New Client Logo'}
             </h2>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
+                <label className="block text-sm font-medium mb-2 text-slate-200">Name *</label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'}`}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Industry *</label>
+                <label className="block text-sm font-medium mb-2 text-slate-200">Industry *</label>
                 <input
                   type="text"
                   name="industry"
                   value={formData.industry}
                   onChange={handleInputChange}
                   required
-                  className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'}`}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Logo *</label>
+                <label className="block text-sm font-medium mb-2 text-slate-200">Logo File (PNG/WEBP) *</label>
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
+                  accept="image/png,image/webp,image/jpeg,image/jpg"
+                  onChange={(e) => {
                     const file = e.target.files[0];
                     if (file) {
+                      // Check file size (max 2MB)
+                      if (file.size > 2 * 1024 * 1024) {
+                        alert('File size must be less than 2MB');
+                        e.target.value = '';
+                        return;
+                      }
+                      
+                      // Convert to base64
                       const reader = new FileReader();
                       reader.onloadend = () => {
-                        setFormData((prev) => ({ ...prev, logoUrl: reader.result }));
+                        setFormData(prev => ({ ...prev, logoUrl: reader.result }));
                       };
                       reader.readAsDataURL(file);
                     }
                   }}
-                  className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'}`}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer transition-all"
                 />
+                <p className="text-xs text-slate-400 mt-1">Accepted formats: PNG, WEBP, JPG (Max 2MB)</p>
                 {formData.logoUrl && (
-                  <img src={formData.logoUrl} alt="Preview" className="mt-2 h-16 object-contain" />
+                  <div className="mt-3">
+                    <p className="text-sm text-slate-300 mb-2">Preview:</p>
+                    <img src={formData.logoUrl} alt="Preview" className="h-20 object-contain bg-white/5 p-3 rounded-lg border border-white/10" />
+                  </div>
                 )}
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium mb-2 text-slate-200">Description</label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
                   rows="2"
-                  className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'}`}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
               </div>
 
-              {/* founded, headquarters, trustSignal fields removed */}
-
               <div>
-                <label className="block text-sm font-medium mb-1">Display Order</label>
+                <label className="block text-sm font-medium mb-2 text-slate-200">Display Order</label>
                 <input
                   type="number"
                   name="displayOrder"
                   value={formData.displayOrder}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-gray-300'}`}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
               </div>
 
@@ -203,15 +223,15 @@ export const ClientLogoManagement = () => {
                   onChange={handleInputChange}
                   className="mr-2"
                 />
-                <label className="text-sm font-medium">Active (shown on homepage)</label>
+                <label className="text-sm font-medium text-slate-200">Active (shown on homepage)</label>
               </div>
 
               <div className="md:col-span-2 flex gap-4">
-                <button type="submit" className="btn-primary flex items-center gap-2">
+                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 flex items-center gap-2">
                   <Save size={20} />
                   {editingId ? 'Update' : 'Create'} Logo
                 </button>
-                <button type="button" onClick={resetForm} className="btn-secondary flex items-center gap-2">
+                <button type="button" onClick={resetForm} className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 flex items-center gap-2">
                   <X size={20} />
                   Cancel
                 </button>
@@ -225,36 +245,38 @@ export const ClientLogoManagement = () => {
           {logos.map((logo) => (
             <div
               key={logo._id}
-              className={`p-6 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-lg hover:shadow-xl transition-all`}
+              className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
                   {logo.isActive ? (
-                    <CheckCircle size={20} className="text-green-500" />
+                    <CheckCircle size={20} className="text-green-400" />
                   ) : (
-                    <XCircle size={20} className="text-red-500" />
+                    <XCircle size={20} className="text-red-400" />
                   )}
-                  <span className="text-xs font-semibold">
+                  <span className="text-xs font-semibold text-white">
                     {logo.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(logo)}
-                    className="p-2 rounded hover:bg-slate-700 transition-colors"
+                    className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    title="Edit Logo"
                   >
-                    <Edit2 size={18} className="text-blue-400" />
+                    <Edit2 size={18} className="text-white" />
                   </button>
                   <button
                     onClick={() => handleDelete(logo._id)}
-                    className="p-2 rounded hover:bg-slate-700 transition-colors"
+                    className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                    title="Delete Logo"
                   >
-                    <Trash2 size={18} className="text-red-400" />
+                    <Trash2 size={18} className="text-white" />
                   </button>
                 </div>
               </div>
 
-              <div className="mb-4 flex items-center justify-center h-20 bg-slate-700/30 rounded-lg p-2">
+              <div className="mb-4 flex items-center justify-center h-20 bg-white/5 rounded-lg p-2">
                 <img
                   src={logo.logoUrl}
                   alt={logo.name}
@@ -265,15 +287,14 @@ export const ClientLogoManagement = () => {
                 />
               </div>
 
-              <h3 className="text-xl font-bold mb-2">{logo.name}</h3>
-              <p className="text-sm text-accent mb-2">{logo.industry}</p>
+              <h3 className="text-xl font-bold mb-2 text-white">{logo.name}</h3>
+              <p className="text-sm text-blue-400 mb-2">{logo.industry}</p>
               {logo.description && (
-                <p className={`text-sm mb-2 ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+                <p className="text-sm mb-2 text-slate-200">
                   {logo.description}
                 </p>
               )}
-              {/* founded, headquarters, trustSignal display removed */}
-              <p className={`text-xs mt-2 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+              <p className="text-xs mt-2 text-slate-400">
                 Display Order: {logo.displayOrder}
               </p>
             </div>
@@ -281,9 +302,9 @@ export const ClientLogoManagement = () => {
         </div>
 
         {logos.length === 0 && (
-          <div className={`text-center py-12 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-            <p className="text-xl mb-4">No client logos found</p>
-            <p>Click "Add New Logo" to create your first client logo</p>
+          <div className="text-center py-12">
+            <p className="text-xl mb-4 text-white">No client logos found</p>
+            <p className="text-slate-300">Click "Add New Logo" to create your first client logo</p>
           </div>
         )}
       </div>

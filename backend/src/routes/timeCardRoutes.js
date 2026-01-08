@@ -7,11 +7,11 @@ import { protect, authorize } from '../middleware/auth.js';
 const router = express.Router();
 
 /**
- * EMPLOYEE: Submit or update hours for a specific date
+ * EMPLOYEE & EMPLOYER: Submit or update hours for a specific date
  * POST /api/timecards
- * Employee can only create/update their own time entries
+ * Employee/Employer can only create/update their own time entries
  */
-router.post('/', protect, authorize('employee'), [
+router.post('/', protect, authorize('employee', 'employer'), [
   body('date').isISO8601().withMessage('Valid date is required (YYYY-MM-DD)'),
   body('hoursWorked').isFloat({ min: 0, max: 24 }).withMessage('Hours must be between 0 and 24'),
   body('notes').optional().trim()
@@ -23,11 +23,17 @@ router.post('/', protect, authorize('employee'), [
 
   try {
     const { date, hoursWorked, notes } = req.body;
-    const employeeId = req.user.id;
+    const userId = req.user.id;
+    const userRole = req.user.role;
 
-    // Get employee details to find their employer
-    const employee = await User.findById(employeeId);
-    if (!employee || !employee.employerId) {
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // For employees, check if they have an employer
+    if (userRole === 'employee' && !user.employerId) {
       return res.status(400).json({ message: 'Employee must be assigned to an employer' });
     }
 
@@ -37,7 +43,7 @@ router.post('/', protect, authorize('employee'), [
 
     // Check if entry already exists for this date
     let timeCard = await TimeCard.findOne({
-      employeeId,
+      employeeId: userId,
       date: normalizedDate
     });
 
@@ -60,9 +66,10 @@ router.post('/', protect, authorize('employee'), [
     }
 
     // Create new entry
+    // For employers, employerId is themselves; for employees, it's their assigned employer
     timeCard = new TimeCard({
-      employeeId,
-      employerId: employee.employerId,
+      employeeId: userId,
+      employerId: userRole === 'employer' ? userId : user.employerId,
       date: normalizedDate,
       hoursWorked,
       notes: notes || ''
@@ -81,11 +88,11 @@ router.post('/', protect, authorize('employee'), [
 });
 
 /**
- * EMPLOYEE: Get own time entries
+ * EMPLOYEE & EMPLOYER: Get own time entries
  * GET /api/timecards/my-entries
  * Query params: startDate, endDate
  */
-router.get('/my-entries', protect, authorize('employee'), async (req, res) => {
+router.get('/my-entries', protect, authorize('employee', 'employer'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const employeeId = req.user.id;
@@ -278,6 +285,113 @@ router.get('/employer/weekly-summary', protect, authorize('employer'), async (re
       weekStart,
       weekEnd,
       summary: Object.values(summary)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+/**
+ * ADMIN: Get all time entries across the system
+ * GET /api/timecards/admin/all-entries
+ * Query params: startDate, endDate, employeeId, employerId
+ */
+router.get('/admin/all-entries', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { startDate, endDate, employeeId, employerId } = req.query;
+
+    const filter = {};
+
+    // Filter by specific employee if provided
+    if (employeeId) {
+      filter.employeeId = employeeId;
+    }
+
+    // Filter by specific employer if provided
+    if (employerId) {
+      filter.employerId = employerId;
+    }
+
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) {
+        filter.date.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        filter.date.$lte = new Date(endDate);
+      }
+    }
+
+    const timeCards = await TimeCard.find(filter)
+      .sort({ date: -1 })
+      .populate('employeeId', 'name email designation department')
+      .populate('employerId', 'name email');
+
+    // Calculate total hours
+    const totalHours = timeCards.reduce((sum, card) => sum + card.hoursWorked, 0);
+
+    res.status(200).json({
+      success: true,
+      count: timeCards.length,
+      totalHours: Math.round(totalHours * 10) / 10,
+      timeCards
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+/**
+ * ADMIN: Get timecard statistics and summaries
+ * GET /api/timecards/admin/stats
+ * Query params: startDate, endDate
+ */
+router.get('/admin/stats', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const filter = {};
+
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) {
+        filter.date.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        filter.date.$lte = new Date(endDate);
+      }
+    }
+
+    const timeCards = await TimeCard.find(filter);
+
+    // Calculate statistics
+    const totalHours = timeCards.reduce((sum, card) => sum + card.hoursWorked, 0);
+    const uniqueEmployees = new Set(timeCards.map(card => card.employeeId.toString())).size;
+    const averageHoursPerDay = timeCards.length > 0 ? totalHours / timeCards.length : 0;
+
+    // Group by day of week
+    const hoursByDay = {
+      Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0
+    };
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    timeCards.forEach(card => {
+      const dayIndex = new Date(card.date).getDay();
+      const dayName = dayNames[dayIndex];
+      hoursByDay[dayName] += card.hoursWorked;
+    });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalHours: Math.round(totalHours * 10) / 10,
+        totalEntries: timeCards.length,
+        uniqueEmployees,
+        averageHoursPerDay: Math.round(averageHoursPerDay * 10) / 10,
+        hoursByDay
+      }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

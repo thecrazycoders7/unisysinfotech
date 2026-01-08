@@ -94,17 +94,20 @@ export const ClientManagement = () => {
   };
 
   return (
-    <div className={isDark ? 'bg-gray-950' : 'bg-gray-50'}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] p-6">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Client Management</h1>
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Client Management</h1>
+            <p className="text-slate-300">Manage your client database</p>
+          </div>
           <button
             onClick={() => {
               setShowForm(!showForm);
               setEditingId(null);
               setFormData({ name: '', email: '', industry: '', contactPerson: '', phone: '', address: '', technology: '', onboardingDate: '', offboardingDate: '', status: 'active' });
             }}
-            className="btn-primary flex items-center gap-2"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105"
           >
             <Plus size={20} /> Add Client
           </button>
@@ -113,7 +116,7 @@ export const ClientManagement = () => {
         {/* Search */}
         <div className="mb-6 flex gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-3 text-slate-400" size={20} />
             <input
               type="text"
               value={search}
@@ -122,132 +125,152 @@ export const ClientManagement = () => {
                 setPage(1);
               }}
               placeholder="Search clients..."
-              className={isDark ? 'input-field-dark pl-10' : 'input-field pl-10'}
+              className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
+            <p className="text-sm font-medium text-slate-200">Total Clients</p>
+            <p className="text-4xl font-bold mt-2 text-white">{clients.length}</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
+            <p className="text-sm font-medium text-slate-200">Active Clients</p>
+            <p className="text-4xl font-bold mt-2 text-green-400">{activeClients.length}</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
+            <p className="text-sm font-medium text-slate-200">Inactive Clients</p>
+            <p className="text-4xl font-bold mt-2 text-red-400">{inactiveClients.length}</p>
           </div>
         </div>
 
         {/* Form */}
         {showForm && (
-          <div className={`${isDark ? 'card-dark' : 'card'} p-6 mb-8`}>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 mb-8">
+            <h2 className="text-2xl font-bold mb-6 text-white">
+              {editingId ? 'Edit Client' : 'Add New Client'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Client Name *</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Client Name *</label>
                   <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Email *</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Email *</label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Industry *</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Industry</label>
                   <input
                     type="text"
                     name="industry"
                     value={formData.industry}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
-                    required
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Contact Person *</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Contact Person</label>
                   <input
                     type="text"
                     name="contactPerson"
                     value={formData.contactPerson}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
-                    required
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Phone</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Phone</label>
                   <input
                     type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Address</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Technology</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Technology</label>
                   <input
                     type="text"
                     name="technology"
                     value={formData.technology}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Onboarding Date</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Onboarding Date</label>
                   <input
                     type="date"
                     name="onboardingDate"
-                    value={formData.onboardingDate ? formData.onboardingDate.substring(0, 10) : ''}
+                    value={formData.onboardingDate}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Offboarding Date</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Offboarding Date</label>
                   <input
                     type="date"
                     name="offboardingDate"
-                    value={formData.offboardingDate ? formData.offboardingDate.substring(0, 10) : ''}
+                    value={formData.offboardingDate}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Address</label>
+                  <textarea
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    rows="3"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Status</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-200">Status</label>
                   <select
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
-                    className={isDark ? 'input-field-dark' : 'input-field'}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active" className="bg-slate-800">Active</option>
+                    <option value="inactive" className="bg-slate-800">Inactive</option>
                   </select>
                 </div>
               </div>
-
               <div className="flex gap-4">
-                <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
-                  {editingId ? 'Update Client' : 'Create Client'}
+                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105">
+                  {editingId ? 'Update Client' : 'Add Client'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
-                  className="btn-outline"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingId(null);
+                    setFormData({ name: '', email: '', industry: '', contactPerson: '', phone: '', address: '', technology: '', onboardingDate: '', offboardingDate: '', status: 'active' });
+                  }}
+                  className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300"
                 >
                   Cancel
                 </button>
@@ -257,42 +280,43 @@ export const ClientManagement = () => {
         )}
 
         {/* Clients Table */}
-        <div className={`${isDark ? 'card-dark' : 'card'} p-6`}>
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6">
+          <h2 className="text-2xl font-bold mb-4 text-white">All Clients</h2>
           {loading ? (
-            <p className="text-center py-8">Loading...</p>
+            <p className="text-center py-8 text-white">Loading...</p>
           ) : clients.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <th className="text-left p-4 font-semibold">Name</th>
-                    <th className="text-left p-4 font-semibold">Email</th>
-                    <th className="text-left p-4 font-semibold">Industry</th>
-                    <th className="text-left p-4 font-semibold">Contact Person</th>
-                    <th className="text-left p-4 font-semibold">Technology</th>
-                    <th className="text-left p-4 font-semibold">Onboarding</th>
-                    <th className="text-left p-4 font-semibold">Offboarding</th>
-                    <th className="text-left p-4 font-semibold">Status</th>
-                    <th className="text-left p-4 font-semibold">Actions</th>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left p-4 font-semibold text-white">Name</th>
+                    <th className="text-left p-4 font-semibold text-white">Email</th>
+                    <th className="text-left p-4 font-semibold text-white">Industry</th>
+                    <th className="text-left p-4 font-semibold text-white">Contact Person</th>
+                    <th className="text-left p-4 font-semibold text-white">Technology</th>
+                    <th className="text-left p-4 font-semibold text-white">Onboarding</th>
+                    <th className="text-left p-4 font-semibold text-white">Offboarding</th>
+                    <th className="text-left p-4 font-semibold text-white">Status</th>
+                    <th className="text-left p-4 font-semibold text-white">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {clients.map((client) => (
-                    <tr key={client._id} className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} hover:${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                      <td className="p-4 font-medium">{client.name}</td>
-                      <td className="p-4 text-gray-600 dark:text-gray-400">{client.email}</td>
-                      <td className="p-4">{client.industry}</td>
-                      <td className="p-4">{client.contactPerson}</td>
-                      <td className="p-4">{client.technology || '-'}</td>
-                      <td className="p-4">{client.onboardingDate ? new Date(client.onboardingDate).toLocaleDateString() : '-'}</td>
-                      <td className="p-4">{client.offboardingDate ? new Date(client.offboardingDate).toLocaleDateString() : '-'}</td>
+                    <tr key={client._id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                      <td className="p-4 font-medium text-white">{client.name}</td>
+                      <td className="p-4 text-slate-200">{client.email}</td>
+                      <td className="p-4 text-white">{client.industry}</td>
+                      <td className="p-4 text-white">{client.contactPerson}</td>
+                      <td className="p-4 text-white">{client.technology || '-'}</td>
+                      <td className="p-4 text-white">{client.onboardingDate ? new Date(client.onboardingDate).toLocaleDateString() : '-'}</td>
+                      <td className="p-4 text-white">{client.offboardingDate ? new Date(client.offboardingDate).toLocaleDateString() : '-'}</td>
                       <td className="p-4">
                         <button
                           onClick={async () => {
                             await clientAPI.update(client._id, { status: client.status === 'active' ? 'inactive' : 'active' });
                             fetchClients();
                           }}
-                          className={`px-3 py-1 rounded text-xs font-semibold ${client.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${client.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
                         >
                           {client.status === 'active' ? 'Active' : 'Inactive'}
                         </button>
@@ -300,13 +324,15 @@ export const ClientManagement = () => {
                       <td className="p-4 flex gap-2">
                         <button
                           onClick={() => handleEdit(client)}
-                          className="p-2 text-secondary hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                          className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-300"
+                          title="Edit Client"
                         >
                           <Edit2 size={18} />
                         </button>
                         <button
                           onClick={() => handleDelete(client._id)}
-                          className="p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                          className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-300"
+                          title="Delete Client"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -317,81 +343,7 @@ export const ClientManagement = () => {
               </table>
             </div>
           ) : (
-            <p className="text-center py-8 text-gray-500">No clients found</p>
-          )}
-        </div>
-
-        {/* Active Clients Table */}
-        <div className={`${isDark ? 'card-dark' : 'card'} p-6 mt-10`}>
-          <h2 className="text-2xl font-bold mb-4 text-green-700">Active Clients</h2>
-          {activeClients.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <th className="text-left p-4 font-semibold">Name</th>
-                    <th className="text-left p-4 font-semibold">Email</th>
-                    <th className="text-left p-4 font-semibold">Industry</th>
-                    <th className="text-left p-4 font-semibold">Contact Person</th>
-                    <th className="text-left p-4 font-semibold">Technology</th>
-                    <th className="text-left p-4 font-semibold">Onboarding</th>
-                    <th className="text-left p-4 font-semibold">Offboarding</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeClients.map((client) => (
-                    <tr key={client._id} className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} hover:${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                      <td className="p-4 font-medium">{client.name}</td>
-                      <td className="p-4 text-gray-600 dark:text-gray-400">{client.email}</td>
-                      <td className="p-4">{client.industry}</td>
-                      <td className="p-4">{client.contactPerson}</td>
-                      <td className="p-4">{client.technology || '-'}</td>
-                      <td className="p-4">{client.onboardingDate ? new Date(client.onboardingDate).toLocaleDateString() : '-'}</td>
-                      <td className="p-4">{client.offboardingDate ? new Date(client.offboardingDate).toLocaleDateString() : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-center py-4 text-gray-500">No active clients</p>
-          )}
-        </div>
-
-        {/* Inactive Clients Table */}
-        <div className={`${isDark ? 'card-dark' : 'card'} p-6 mt-6`}>
-          <h2 className="text-2xl font-bold mb-4 text-red-700">Inactive Clients</h2>
-          {inactiveClients.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <th className="text-left p-4 font-semibold">Name</th>
-                    <th className="text-left p-4 font-semibold">Email</th>
-                    <th className="text-left p-4 font-semibold">Industry</th>
-                    <th className="text-left p-4 font-semibold">Contact Person</th>
-                    <th className="text-left p-4 font-semibold">Technology</th>
-                    <th className="text-left p-4 font-semibold">Onboarding</th>
-                    <th className="text-left p-4 font-semibold">Offboarding</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inactiveClients.map((client) => (
-                    <tr key={client._id} className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'} hover:${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
-                      <td className="p-4 font-medium">{client.name}</td>
-                      <td className="p-4 text-gray-600 dark:text-gray-400">{client.email}</td>
-                      <td className="p-4">{client.industry}</td>
-                      <td className="p-4">{client.contactPerson}</td>
-                      <td className="p-4">{client.technology || '-'}</td>
-                      <td className="p-4">{client.onboardingDate ? new Date(client.onboardingDate).toLocaleDateString() : '-'}</td>
-                      <td className="p-4">{client.offboardingDate ? new Date(client.offboardingDate).toLocaleDateString() : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-center py-4 text-gray-500">No inactive clients</p>
+            <p className="text-center py-8 text-slate-300">No clients found</p>
           )}
         </div>
       </div>
