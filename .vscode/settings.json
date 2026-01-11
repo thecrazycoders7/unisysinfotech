@@ -1,7 +1,0 @@
-{
-    "chat.agent.codeBlockProgress": true,
-    "chat.allowAnonymousAccess": true,
-    "chat.checkpoints.showFileChanges": true,
-    "inlineChat.accessibleDiffView": "on",
-    "inlineChat.enableV2": true
-}
