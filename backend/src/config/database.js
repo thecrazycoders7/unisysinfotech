@@ -1,13 +1,4 @@
-import mongoose from 'mongoose';
-
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB connected successfully');
-  } catch (error) {
-    console.error('MongoDB connection failed:', error.message);
-    process.exit(1);
-  }
-};
-
+// This file is kept for backward compatibility
+// The actual database connection is now in src/config/supabase.js
+import { connectDB } from './supabase.js';
 export default connectDB;

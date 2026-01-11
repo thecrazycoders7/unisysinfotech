@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import Client from '../models/Client.js';
 import { protect, authorize } from '../middleware/auth.js';
+import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
@@ -9,54 +9,96 @@ const router = express.Router();
 router.get('/', protect, authorize('admin'), async (req, res) => {
   try {
     const { page = 1, limit = 20, search, industry } = req.query;
-    let query = {};
-
+    
+    // Count query
+    let countQuery = supabase.from('clients').select('*', { count: 'exact', head: true });
     if (search) {
-      query = {
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } }
-        ]
-      };
+      countQuery = countQuery.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
     }
-
     if (industry) {
-      query.industry = industry;
+      countQuery = countQuery.eq('industry', industry);
+    }
+    const { count } = await countQuery;
+    
+    // Data query
+    let query = supabase.from('clients').select('*');
+    
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+    }
+    
+    if (industry) {
+      query = query.eq('industry', industry);
+    }
+    
+    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page);
+    const offset = (pageNum - 1) * limitNum;
+    
+    query = query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limitNum - 1);
+    
+    const { data: clients, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching clients:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
     }
 
-    const skip = (page - 1) * limit;
-    const clients = await Client.find(query)
-      .limit(limit * 1)
-      .skip(skip)
-      .sort({ createdAt: -1 });
-
-    const total = await Client.countDocuments(query);
+    const transformedClients = (clients || []).map(transformClient);
 
     res.status(200).json({
       success: true,
-      count: clients.length,
-      total,
-      pages: Math.ceil(total / limit),
-      currentPage: page,
-      clients
+      count: transformedClients.length,
+      total: count || 0,
+      pages: Math.ceil((count || 0) / limitNum),
+      currentPage: pageNum,
+      clients: transformedClients
     });
   } catch (error) {
+    console.error('Error fetching clients:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+});
+
+// Transform helper function
+const transformClient = (client) => ({
+  _id: client.id,
+  id: client.id,
+  name: client.name,
+  email: client.email,
+  industry: client.industry,
+  contactPerson: client.contact_person,
+  phone: client.phone,
+  address: client.address,
+  technology: client.technology,
+  onboardingDate: client.onboarding_date,
+  offboardingDate: client.offboarding_date,
+  status: client.status,
+  createdAt: client.created_at,
+  updatedAt: client.updated_at
 });
 
 // Get single client (admin only)
 router.get('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const client = await Client.findById(req.params.id);
-    if (!client) {
+    const { data: client, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+      
+    if (error || !client) {
       return res.status(404).json({ message: 'Client not found' });
     }
+    
     res.status(200).json({
       success: true,
-      client
+      client: transformClient(client)
     });
   } catch (error) {
+    console.error('Error fetching client:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -83,32 +125,45 @@ router.post('/', protect, authorize('admin'), [
     const { name, email, industry, contactPerson, phone, address, technology, onboardingDate, offboardingDate, status } = req.body;
 
     // Check if client with same email exists
-    const existingClient = await Client.findOne({ email });
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+      
     if (existingClient) {
       return res.status(400).json({ message: 'Client with this email already exists' });
     }
 
-    const client = new Client({
-      name,
-      email,
-      industry,
-      contactPerson,
-      phone,
-      address,
-      technology,
-      onboardingDate,
-      offboardingDate,
-      status
-    });
+    const { data: client, error } = await supabase
+      .from('clients')
+      .insert({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        industry: industry.trim(),
+        contact_person: contactPerson.trim(),
+        phone: phone?.trim() || '',
+        address: address?.trim() || '',
+        technology: technology?.trim() || '',
+        onboarding_date: onboardingDate || null,
+        offboarding_date: offboardingDate || null,
+        status: status || 'active'
+      })
+      .select()
+      .single();
 
-    await client.save();
+    if (error) {
+      console.error('Error creating client:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
 
     res.status(201).json({
       success: true,
       message: 'Client created successfully',
-      client
+      client: transformClient(client)
     });
   } catch (error) {
+    console.error('Error creating client:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -132,31 +187,64 @@ router.put('/:id', protect, authorize('admin'), [
   }
 
   try {
-    let client = await Client.findById(req.params.id);
-    if (!client) {
+    const { name, email, industry, contactPerson, phone, address, technology, onboardingDate, offboardingDate, status } = req.body;
+    
+    // Check if client exists
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('email')
+      .eq('id', req.params.id)
+      .single();
+      
+    if (!existingClient) {
       return res.status(404).json({ message: 'Client not found' });
     }
 
     // Check for email uniqueness if email is being updated
-    if (req.body.email && req.body.email !== client.email) {
-      const existingClient = await Client.findOne({ email: req.body.email });
-      if (existingClient) {
+    if (email && email.toLowerCase().trim() !== existingClient.email) {
+      const { data: emailCheck } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle();
+        
+      if (emailCheck) {
         return res.status(400).json({ message: 'Email already in use' });
       }
     }
 
-    client = await Client.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, updatedAt: Date.now() },
-      { new: true, runValidators: true }
-    );
+    // Build update object
+    const updateData = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (email !== undefined) updateData.email = email.toLowerCase().trim();
+    if (industry !== undefined) updateData.industry = industry.trim();
+    if (contactPerson !== undefined) updateData.contact_person = contactPerson.trim();
+    if (phone !== undefined) updateData.phone = phone?.trim() || '';
+    if (address !== undefined) updateData.address = address?.trim() || '';
+    if (technology !== undefined) updateData.technology = technology?.trim() || '';
+    if (onboardingDate !== undefined) updateData.onboarding_date = onboardingDate || null;
+    if (offboardingDate !== undefined) updateData.offboarding_date = offboardingDate || null;
+    if (status !== undefined) updateData.status = status;
+
+    const { data: client, error } = await supabase
+      .from('clients')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating client:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
 
     res.status(200).json({
       success: true,
       message: 'Client updated successfully',
-      client
+      client: transformClient(client)
     });
   } catch (error) {
+    console.error('Error updating client:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -164,8 +252,14 @@ router.put('/:id', protect, authorize('admin'), [
 // Delete client (admin only)
 router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const client = await Client.findByIdAndDelete(req.params.id);
-    if (!client) {
+    const { data: client, error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', req.params.id)
+      .select()
+      .single();
+      
+    if (error || !client) {
       return res.status(404).json({ message: 'Client not found' });
     }
 
@@ -174,6 +268,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       message: 'Client deleted successfully'
     });
   } catch (error) {
+    console.error('Error deleting client:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

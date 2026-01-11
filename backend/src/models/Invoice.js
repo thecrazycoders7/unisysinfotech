@@ -69,8 +69,7 @@ const invoiceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for faster queries
-invoiceSchema.index({ invoiceNumber: 1 });
+// Index for faster queries (invoiceNumber already has index from unique: true)
 invoiceSchema.index({ payrollMonth: 1 });
 invoiceSchema.index({ status: 1 });
 invoiceSchema.index({ name: 1 });

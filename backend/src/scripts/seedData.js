@@ -1,6 +1,5 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import connectDB from '../config/database.js';
 import User from '../models/User.js';
 import Client from '../models/Client.js';
 
@@ -9,22 +8,41 @@ dotenv.config();
 
 const seedDatabase = async () => {
   try {
-    // Connect to database
-    await connectDB();
+    // Try to connect to database with fallback to local MongoDB
+    let mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/unisys-infotech';
+    
+    try {
+      await mongoose.connect(mongoURI);
+      console.log('✓ Connected to MongoDB');
+    } catch (firstError) {
+      // If primary connection fails and it's not already the local fallback, try local
+      if (process.env.MONGODB_URI && !mongoURI.includes('localhost')) {
+        console.log('Primary MongoDB connection failed, trying local MongoDB...');
+        mongoURI = 'mongodb://localhost:27017/unisys-infotech';
+        await mongoose.connect(mongoURI);
+        console.log('✓ Connected to local MongoDB');
+      } else {
+        throw firstError;
+      }
+    }
 
-    // Create admin user
-    const adminUser = new User({
-      name: 'Admin User',
-      email: 'admin@unisysinfotech.com',
-      password: 'password123',
-      role: 'admin',
-      designation: 'Administrator',
-      department: 'Management',
-      isActive: true
-    });
-
-    await adminUser.save();
-    console.log('✓ Admin user created');
+    // Create admin user (password will be hashed by User model pre-save hook)
+    const existingAdmin = await User.findOne({ email: 'admin@unisysinfotech.com' });
+    if (!existingAdmin) {
+      const adminUser = new User({
+        name: 'Admin User',
+        email: 'admin@unisysinfotech.com',
+        password: 'password123',
+        role: 'admin',
+        designation: 'Administrator',
+        department: 'Management',
+        isActive: true
+      });
+      await adminUser.save();
+      console.log('✓ Admin user created');
+    } else {
+      console.log('✓ Admin user already exists');
+    }
 
     // Create sample users
     const sampleUsers = [
@@ -55,10 +73,13 @@ const seedDatabase = async () => {
     ];
 
     for (const userData of sampleUsers) {
-      const user = new User(userData);
-      await user.save();
+      const existingUser = await User.findOne({ email: userData.email });
+      if (!existingUser) {
+        const user = new User(userData);
+        await user.save();
+      }
     }
-    console.log('✓ Sample users created');
+    console.log('✓ Sample users created/verified');
 
     // Create sample clients
     const sampleClients = [
@@ -101,10 +122,13 @@ const seedDatabase = async () => {
     ];
 
     for (const clientData of sampleClients) {
-      const client = new Client(clientData);
-      await client.save();
+      const existingClient = await Client.findOne({ email: clientData.email });
+      if (!existingClient) {
+        const client = new Client(clientData);
+        await client.save();
+      }
     }
-    console.log('✓ Sample clients created');
+    console.log('✓ Sample clients created/verified');
 
     console.log('\n✅ Database seeded successfully!');
     await mongoose.connection.close();

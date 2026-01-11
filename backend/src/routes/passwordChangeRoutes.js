@@ -1,9 +1,8 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
-import PasswordChangeRequest from '../models/PasswordChangeRequest.js';
-import User from '../models/User.js';
 import { protect as auth } from '../middleware/auth.js';
+import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
@@ -25,9 +24,14 @@ router.post('/request',
     try {
       const { currentPassword, newPassword } = req.body;
 
-      // Get user with password field (password has select: false by default)
-      const user = await User.findById(req.user.id).select('+password');
-      if (!user) {
+      // Get user with password field
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, password')
+        .eq('id', req.user.id)
+        .single();
+
+      if (userError || !user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
@@ -38,10 +42,12 @@ router.post('/request',
       }
 
       // Check if there's already a pending request
-      const existingRequest = await PasswordChangeRequest.findOne({
-        userId: req.user.id,
-        status: 'Pending'
-      });
+      const { data: existingRequest } = await supabase
+        .from('password_change_requests')
+        .select('id')
+        .eq('user_id', req.user.id)
+        .eq('status', 'Pending')
+        .maybeSingle();
 
       if (existingRequest) {
         return res.status(400).json({ message: 'You already have a pending password change request' });
@@ -52,20 +58,25 @@ router.post('/request',
       const newPasswordHash = await bcrypt.hash(newPassword, salt);
 
       // Create password change request
-      const passwordChangeRequest = new PasswordChangeRequest({
-        userId: req.user.id,
-        newPasswordHash
-      });
+      const { data: passwordChangeRequest, error: createError } = await supabase
+        .from('password_change_requests')
+        .insert({
+          user_id: req.user.id,
+          new_password_hash: newPasswordHash,
+          status: 'Pending'
+        })
+        .select()
+        .single();
 
-      await passwordChangeRequest.save();
+      if (createError) throw createError;
 
       res.status(201).json({
         success: true,
         message: 'Password change request submitted successfully. Waiting for admin approval.',
         data: {
-          requestId: passwordChangeRequest._id,
+          requestId: passwordChangeRequest.id,
           status: passwordChangeRequest.status,
-          requestedAt: passwordChangeRequest.requestedAt
+          requestedAt: passwordChangeRequest.requested_at
         }
       });
     } catch (error) {

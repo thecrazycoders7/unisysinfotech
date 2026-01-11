@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import HoursLog from '../models/HoursLog.js';
 import { protect } from '../middleware/auth.js';
+import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
@@ -9,36 +9,75 @@ const router = express.Router();
 router.get('/', protect, async (req, res) => {
   try {
     const { startDate, endDate, page = 1, limit = 30 } = req.query;
-    let query = { userId: req.user.id };
 
-    if (startDate || endDate) {
-      query.date = {};
-      if (startDate) {
-        query.date.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.date.$lte = new Date(endDate);
-      }
+    // Count query
+    let countQuery = supabase
+      .from('hours_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id);
+
+    if (startDate) {
+      countQuery = countQuery.gte('date', new Date(startDate).toISOString().split('T')[0]);
+    }
+    if (endDate) {
+      countQuery = countQuery.lte('date', new Date(endDate).toISOString().split('T')[0]);
     }
 
-    const skip = (page - 1) * limit;
-    const logs = await HoursLog.find(query)
-      .populate('clientId', 'name')
-      .limit(limit * 1)
-      .skip(skip)
-      .sort({ date: -1 });
+    const { count } = await countQuery;
 
-    const total = await HoursLog.countDocuments(query);
+    // Data query
+    let query = supabase
+      .from('hours_logs')
+      .select('*')
+      .eq('user_id', req.user.id);
+
+    if (startDate) {
+      query = query.gte('date', new Date(startDate).toISOString().split('T')[0]);
+    }
+    if (endDate) {
+      query = query.lte('date', new Date(endDate).toISOString().split('T')[0]);
+    }
+
+    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page);
+    const offset = (pageNum - 1) * limitNum;
+
+    query = query
+      .order('date', { ascending: false })
+      .range(offset, offset + limitNum - 1);
+
+    const { data: logs, error } = await query;
+
+    if (error) throw error;
+
+    // Populate client names if client_id exists
+    const logsWithClients = await Promise.all(
+      (logs || []).map(async (log) => {
+        if (log.client_id) {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('id, name')
+            .eq('id', log.client_id)
+            .single();
+          return {
+            ...log,
+            clientId: log.client_id ? { id: client?.id, name: client?.name } : null
+          };
+        }
+        return { ...log, clientId: null };
+      })
+    );
 
     res.status(200).json({
       success: true,
-      count: logs.length,
-      total,
-      pages: Math.ceil(total / limit),
-      currentPage: page,
-      logs
+      count: logsWithClients.length,
+      total: count || 0,
+      pages: Math.ceil((count || 0) / limitNum),
+      currentPage: pageNum,
+      logs: logsWithClients
     });
   } catch (error) {
+    console.error('Error fetching hours logs:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -47,17 +86,33 @@ router.get('/', protect, async (req, res) => {
 router.get('/:date', protect, async (req, res) => {
   try {
     const { date } = req.params;
-    const startOfDay = new Date(date);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const normalizedDate = new Date(date).toISOString().split('T')[0];
 
-    const log = await HoursLog.findOne({
-      userId: req.user.id,
-      date: { $gte: startOfDay, $lte: endOfDay }
-    }).populate('clientId', 'name');
+    const { data: logs, error } = await supabase
+      .from('hours_logs')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .eq('date', normalizedDate)
+      .limit(1);
 
-    if (!log) {
+    if (error) throw error;
+
+    if (!logs || logs.length === 0) {
       return res.status(404).json({ message: 'No hours logged for this date' });
+    }
+
+    const log = logs[0];
+
+    // Populate client if exists
+    if (log.client_id) {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('id', log.client_id)
+        .single();
+      log.clientId = client ? { id: client.id, name: client.name } : null;
+    } else {
+      log.clientId = null;
     }
 
     res.status(200).json({
@@ -65,6 +120,7 @@ router.get('/:date', protect, async (req, res) => {
       log
     });
   } catch (error) {
+    console.error('Error fetching hours log:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -84,32 +140,46 @@ router.post('/', protect, [
 
   try {
     const { date, hoursWorked, taskDescription, category, clientId } = req.body;
-    const logDate = new Date(date);
-    const startOfDay = new Date(logDate);
-    const endOfDay = new Date(logDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const normalizedDate = new Date(date).toISOString().split('T')[0];
 
     // Check for duplicate entry
-    const existingLog = await HoursLog.findOne({
-      userId: req.user.id,
-      date: { $gte: startOfDay, $lte: endOfDay }
-    });
+    const { data: existingLogs } = await supabase
+      .from('hours_logs')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .eq('date', normalizedDate)
+      .limit(1);
 
-    if (existingLog) {
+    if (existingLogs && existingLogs.length > 0) {
       return res.status(400).json({ message: 'Hours already logged for this date' });
     }
 
-    const log = new HoursLog({
-      userId: req.user.id,
-      clientId,
-      date: logDate,
-      hoursWorked,
-      taskDescription,
-      category
-    });
+    const { data: log, error } = await supabase
+      .from('hours_logs')
+      .insert({
+        user_id: req.user.id,
+        client_id: clientId || null,
+        date: normalizedDate,
+        hours_worked: hoursWorked,
+        task_description: taskDescription || '',
+        category: category || 'Development'
+      })
+      .select()
+      .single();
 
-    await log.save();
-    await log.populate('clientId', 'name');
+    if (error) throw error;
+
+    // Populate client if exists
+    if (log.client_id) {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('id', log.client_id)
+        .single();
+      log.clientId = client ? { id: client.id, name: client.name } : null;
+    } else {
+      log.clientId = null;
+    }
 
     res.status(201).json({
       success: true,
@@ -117,6 +187,7 @@ router.post('/', protect, [
       log
     });
   } catch (error) {
+    console.error('Error creating hours log:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -133,22 +204,51 @@ router.put('/:id', protect, [
   }
 
   try {
-    let log = await HoursLog.findById(req.params.id);
+    const { hoursWorked, taskDescription, category, clientId } = req.body;
 
-    if (!log) {
+    // Get existing log
+    const { data: existingLog, error: fetchError } = await supabase
+      .from('hours_logs')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError || !existingLog) {
       return res.status(404).json({ message: 'Hours log not found' });
     }
 
     // Ensure user can only update their own logs
-    if (log.userId.toString() !== req.user.id) {
+    if (existingLog.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to update this log' });
     }
 
-    log = await HoursLog.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, updatedAt: Date.now() },
-      { new: true, runValidators: true }
-    ).populate('clientId', 'name');
+    // Build update object
+    const updateData = {};
+    if (hoursWorked !== undefined) updateData.hours_worked = hoursWorked;
+    if (taskDescription !== undefined) updateData.task_description = taskDescription;
+    if (category !== undefined) updateData.category = category;
+    if (clientId !== undefined) updateData.client_id = clientId || null;
+
+    const { data: log, error } = await supabase
+      .from('hours_logs')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Populate client if exists
+    if (log.client_id) {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('id', log.client_id)
+        .single();
+      log.clientId = client ? { id: client.id, name: client.name } : null;
+    } else {
+      log.clientId = null;
+    }
 
     res.status(200).json({
       success: true,
@@ -156,6 +256,7 @@ router.put('/:id', protect, [
       log
     });
   } catch (error) {
+    console.error('Error updating hours log:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -163,24 +264,35 @@ router.put('/:id', protect, [
 // Delete hours log
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const log = await HoursLog.findById(req.params.id);
+    // Get existing log
+    const { data: existingLog, error: fetchError } = await supabase
+      .from('hours_logs')
+      .select('user_id')
+      .eq('id', req.params.id)
+      .single();
 
-    if (!log) {
+    if (fetchError || !existingLog) {
       return res.status(404).json({ message: 'Hours log not found' });
     }
 
     // Ensure user can only delete their own logs
-    if (log.userId.toString() !== req.user.id) {
+    if (existingLog.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to delete this log' });
     }
 
-    await HoursLog.findByIdAndDelete(req.params.id);
+    const { error } = await supabase
+      .from('hours_logs')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
 
     res.status(200).json({
       success: true,
       message: 'Hours log deleted successfully'
     });
   } catch (error) {
+    console.error('Error deleting hours log:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

@@ -20,7 +20,7 @@ dotenv.config();
 
 const app = express();
 
-// Connect to MongoDB
+// Connect to Supabase
 connectDB();
 
 // Middleware

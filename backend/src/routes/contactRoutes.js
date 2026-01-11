@@ -1,6 +1,6 @@
 import express from 'express';
-import Contact from '../models/Contact.js';
 import { protect, authorize } from '../middleware/auth.js';
+import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
@@ -23,43 +23,61 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     // Check if contact with this email already exists
-    const existingContact = await Contact.findOne({ workEmail: workEmail.toLowerCase() });
+    const { data: existingContact } = await supabase
+      .from('contacts')
+      .select('*')
+      .eq('work_email', workEmail.toLowerCase().trim())
+      .maybeSingle();
     
     if (existingContact) {
       // Update existing contact instead of creating duplicate
-      existingContact.firstName = firstName;
-      existingContact.lastName = lastName;
-      existingContact.jobTitle = jobTitle;
-      existingContact.company = company;
-      existingContact.employees = employees;
-      existingContact.phone = phone;
-      existingContact.country = country;
-      existingContact.productInterest = productInterest;
-      existingContact.questionsComments = questionsComments;
-      existingContact.submittedAt = new Date();
+      const { data: updatedContact, error: updateError } = await supabase
+        .from('contacts')
+        .update({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          job_title: jobTitle.trim(),
+          company: company.trim(),
+          employees,
+          phone: phone.trim(),
+          country: country || 'India',
+          product_interest: productInterest,
+          questions_comments: questionsComments || '',
+          submitted_at: new Date().toISOString()
+        })
+        .eq('id', existingContact.id)
+        .select()
+        .single();
       
-      await existingContact.save();
+      if (updateError) throw updateError;
       
       return res.status(200).json({
         success: true,
         message: 'Thank you for your interest! We have updated your information and will contact you within 24 hours.',
-        data: existingContact,
+        data: updatedContact,
       });
     }
 
     // Create new contact
-    const contact = await Contact.create({
-      firstName,
-      lastName,
-      jobTitle,
-      workEmail,
-      company,
-      employees,
-      phone,
-      country,
-      productInterest,
-      questionsComments,
-    });
+    const { data: contact, error: createError } = await supabase
+      .from('contacts')
+      .insert({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        job_title: jobTitle.trim(),
+        work_email: workEmail.toLowerCase().trim(),
+        company: company.trim(),
+        employees,
+        phone: phone.trim(),
+        country: country || 'India',
+        product_interest: productInterest,
+        questions_comments: questionsComments || '',
+        status: 'new'
+      })
+      .select()
+      .single();
+    
+    if (createError) throw createError;
 
     res.status(201).json({
       success: true,
@@ -68,19 +86,10 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating contact:', error);
-    
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors,
-      });
-    }
-
     res.status(500).json({
       success: false,
       message: 'Error submitting contact form. Please try again.',
+      error: error.message
     });
   }
 });
@@ -90,29 +99,50 @@ router.post('/', async (req, res) => {
 // @access  Private/Admin
 router.get('/', protect, authorize('admin'), async (req, res) => {
   try {
-    const { status, page = 1, limit = 10, sort = '-submittedAt' } = req.query;
+    const { status, page = 1, limit = 10, sort = '-submitted_at' } = req.query;
     
-    const query = status ? { status } : {};
+    // Count query
+    let countQuery = supabase.from('contacts').select('*', { count: 'exact', head: true });
+    if (status) {
+      countQuery = countQuery.eq('status', status);
+    }
+    const { count } = await countQuery;
     
-    const contacts = await Contact.find(query)
-      .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    // Data query
+    let query = supabase.from('contacts').select('*');
     
-    const count = await Contact.countDocuments(query);
+    if (status) {
+      query = query.eq('status', status);
+    }
+    
+    // Handle sorting
+    const sortField = sort.replace('-', '').replace('submittedAt', 'submitted_at');
+    const sortOrder = sort.startsWith('-') ? 'desc' : 'asc';
+    query = query.order(sortField, { ascending: sortOrder === 'asc' });
+    
+    // Pagination
+    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page);
+    const offset = (pageNum - 1) * limitNum;
+    query = query.range(offset, offset + limitNum - 1);
+    
+    const { data: contacts, error } = await query;
+
+    if (error) throw error;
 
     res.json({
       success: true,
-      data: contacts,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
-      total: count,
+      data: contacts || [],
+      totalPages: Math.ceil((count || 0) / limitNum),
+      currentPage: pageNum,
+      total: count || 0,
     });
   } catch (error) {
     console.error('Error fetching contacts:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching contacts',
+      error: error.message
     });
   }
 });
@@ -122,9 +152,13 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin
 router.get('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const contact = await Contact.findById(req.params.id);
+    const { data: contact, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
     
-    if (!contact) {
+    if (error || !contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found',
@@ -140,6 +174,7 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching contact',
+      error: error.message
     });
   }
 });
@@ -151,13 +186,14 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
     const { status } = req.body;
     
-    const contact = await Contact.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true, runValidators: true }
-    );
+    const { data: contact, error } = await supabase
+      .from('contacts')
+      .update({ status })
+      .eq('id', req.params.id)
+      .select()
+      .single();
     
-    if (!contact) {
+    if (error || !contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found',
@@ -174,6 +210,7 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating contact',
+      error: error.message
     });
   }
 });
@@ -183,9 +220,14 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin
 router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const contact = await Contact.findByIdAndDelete(req.params.id);
+    const { data: contact, error } = await supabase
+      .from('contacts')
+      .delete()
+      .eq('id', req.params.id)
+      .select()
+      .single();
     
-    if (!contact) {
+    if (error || !contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found',
@@ -201,6 +243,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting contact',
+      error: error.message
     });
   }
 });
