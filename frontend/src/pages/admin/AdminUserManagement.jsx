@@ -42,6 +42,7 @@ export const AdminUserManagement = () => {
     employerId: '',
     designation: '',
     department: '',
+    hourlyPay: '',
     endClient: '',
     endClientReportingMail: ''
   });
@@ -146,7 +147,8 @@ export const AdminUserManagement = () => {
         password: formData.password,
         role: formData.role,
         designation: formData.designation || undefined,
-        department: formData.department || undefined
+        department: formData.department || undefined,
+        hourlyPay: formData.hourlyPay ? parseFloat(formData.hourlyPay) : undefined
       };
 
       if (formData.role === 'employee' && formData.employerId) {
@@ -176,7 +178,8 @@ export const AdminUserManagement = () => {
       const payload = {
         name: formData.name,
         designation: formData.designation || undefined,
-        department: formData.department || undefined
+        department: formData.department || undefined,
+        hourlyPay: formData.hourlyPay ? parseFloat(formData.hourlyPay) : undefined
       };
 
       // Only allow changing employer assignment for employees
@@ -210,6 +213,7 @@ export const AdminUserManagement = () => {
       employerId: user.employerId?._id || user.employerId?.id || user.employerId || '',
       designation: user.designation || '',
       department: user.department || '',
+      hourlyPay: user.hourlyPay || user.hourly_pay || '',
       endClient: user.endClient || '',
       endClientReportingMail: user.endClientReportingMail || ''
     });
@@ -281,6 +285,7 @@ export const AdminUserManagement = () => {
       employerId: '',
       designation: '',
       department: '',
+      hourlyPay: '',
       endClient: '',
       endClientReportingMail: ''
     });
@@ -714,7 +719,7 @@ export const AdminUserManagement = () => {
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({...formData, role: e.target.value, employerId: ''})}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-blue-500"
+                    className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                     required
                   >
                     <option value="employee" className="bg-slate-800">Employee</option>
@@ -728,7 +733,7 @@ export const AdminUserManagement = () => {
                     <select
                       value={formData.employerId}
                       onChange={(e) => setFormData({...formData, employerId: e.target.value})}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                       required
                     >
                       <option value="" className="bg-slate-800">Select Employer</option>
@@ -763,6 +768,22 @@ export const AdminUserManagement = () => {
                     placeholder="e.g., Engineering"
                   />
                 </div>
+
+                {(formData.role === 'employee' || formData.role === 'employer') && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-slate-200">Hourly Pay ($) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.hourlyPay}
+                      onChange={(e) => setFormData({...formData, hourlyPay: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g., 25.00"
+                      required
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -859,7 +880,7 @@ export const AdminUserManagement = () => {
                     <select
                       value={formData.employerId}
                       onChange={(e) => setFormData({...formData, employerId: e.target.value})}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                     >
                       <option value="" className="bg-slate-800">No Employer</option>
                       {employers.map(emp => {
@@ -893,6 +914,22 @@ export const AdminUserManagement = () => {
                     placeholder="e.g., Engineering"
                   />
                 </div>
+
+                {(editingUser.role === 'employee' || editingUser.role === 'employer') && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-slate-200">Hourly Pay ($) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.hourlyPay}
+                      onChange={(e) => setFormData({...formData, hourlyPay: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g., 25.00"
+                      required
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">

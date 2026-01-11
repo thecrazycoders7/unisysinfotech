@@ -43,7 +43,8 @@ export const timeCardAPI = {
   
   // Admin routes
   getAllEntries: (params) => api.get('/timecards/admin/all-entries', { params }),
-  getStats: (params) => api.get('/timecards/admin/stats', { params })
+  getStats: (params) => api.get('/timecards/admin/stats', { params }),
+  getMonthlySummary: (params) => api.get('/timecards/admin/monthly-summary', { params })
 };
 
 // Client APIs (Admin only)

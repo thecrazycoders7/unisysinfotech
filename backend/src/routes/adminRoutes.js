@@ -25,7 +25,7 @@ router.post('/users/create', protect, authorize('admin'), [
   }
 
   try {
-    const { name, email, password, role, designation, department, employerId } = req.body;
+    const { name, email, password, role, designation, department, employerId, hourlyPay } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check if user exists in custom users table
@@ -86,19 +86,22 @@ router.post('/users/create', protect, authorize('admin'), [
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Step 3: Create user in custom users table
+    const insertData = {
+      name: name.trim(),
+      email: normalizedEmail,
+      password: hashedPassword,
+      role,
+      designation: designation?.trim() || '',
+      department: department?.trim() || '',
+      employer_id: role === 'employee' ? employerId : null,
+      is_active: true,
+      supabase_auth_id: supabaseAuthUser?.id || null, // Link to Supabase Auth user
+      hourly_pay: hourlyPay ? parseFloat(hourlyPay) : 0
+    };
+
     const { data: user, error } = await supabase
       .from('users')
-      .insert({
-        name: name.trim(),
-        email: normalizedEmail,
-        password: hashedPassword,
-        role,
-        designation: designation?.trim() || '',
-        department: department?.trim() || '',
-        employer_id: role === 'employee' ? employerId : null,
-        is_active: true,
-        supabase_auth_id: supabaseAuthUser?.id || null // Link to Supabase Auth user
-      })
+      .insert(insertData)
       .select('id, name, email, role, employer_id')
       .single();
 
@@ -142,7 +145,7 @@ router.get('/users', protect, authorize('admin'), async (req, res) => {
     
     let query = supabase
       .from('users')
-      .select('id, name, email, role, designation, department, employer_id, is_active, created_at, updated_at');
+      .select('id, name, email, role, designation, department, employer_id, hourly_pay, is_active, created_at, updated_at');
     
     if (role) {
       query = query.eq('role', role);
@@ -166,6 +169,7 @@ router.get('/users', protect, authorize('admin'), async (req, res) => {
       role: user.role,
       designation: user.designation,
       department: user.department,
+      hourlyPay: user.hourly_pay || 0,
       employerId: employer ? { _id: employer.id, id: employer.id, name: employer.name, email: employer.email } : null,
       isActive: user.is_active !== false, // Transform is_active to isActive
       createdAt: user.created_at,
@@ -283,7 +287,7 @@ router.put('/users/:id', protect, authorize('admin'), [
   }
 
   try {
-    const { name, email, role, designation, department, employerId } = req.body;
+    const { name, email, role, designation, department, employerId, hourlyPay } = req.body;
     
     // Get current user
     const { data: currentUser } = await supabase
@@ -307,6 +311,7 @@ router.put('/users/:id', protect, authorize('admin'), [
     if (email) updateData.email = email.toLowerCase().trim();
     if (designation !== undefined) updateData.designation = designation?.trim() || '';
     if (department !== undefined) updateData.department = department?.trim() || '';
+    if (hourlyPay !== undefined) updateData.hourly_pay = hourlyPay ? parseFloat(hourlyPay) : 0;
     
     if (role) {
       updateData.role = role;
@@ -324,7 +329,7 @@ router.put('/users/:id', protect, authorize('admin'), [
       .from('users')
       .update(updateData)
       .eq('id', req.params.id)
-      .select('id, name, email, role, designation, department, employer_id')
+      .select('id, name, email, role, designation, department, employer_id, hourly_pay')
       .single();
 
     if (error) {

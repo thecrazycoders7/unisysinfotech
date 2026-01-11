@@ -24,28 +24,19 @@ export const TimecardsManagement = () => {
   const fetchTimecards = async () => {
     setLoading(true);
     try {
-      // Calculate date range for selected month
+      // Get month and year from selectedMonth (format: "2026-01")
       const [year, month] = selectedMonth.split('-');
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
       
-      const [timecardsRes, statsRes] = await Promise.all([
-        timeCardAPI.getAllEntries({
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString()
-        }),
-        timeCardAPI.getStats({
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString()
-        })
-      ]);
+      const timecardsRes = await timeCardAPI.getMonthlySummary({
+        month: parseInt(month),
+        year: parseInt(year)
+      });
 
-      setTimecards(timecardsRes.data.timeCards || []);
+      setTimecards(timecardsRes.data.timecards || []);
       setStats({
         totalHours: timecardsRes.data.totalHours || 0,
         totalEntries: timecardsRes.data.count || 0,
-        uniqueEmployees: statsRes.data.stats?.uniqueEmployees || 0,
-        hoursByDay: statsRes.data.stats?.hoursByDay || {}
+        uniqueEmployees: timecardsRes.data.count || 0
       });
     } catch (error) {
       console.error('Error fetching timecards:', error);
@@ -57,10 +48,10 @@ export const TimecardsManagement = () => {
 
   // Filter timecards by search term
   const filteredTimecards = timecards.filter(tc => {
-    const employeeName = tc.employee?.name?.toLowerCase() || '';
-    const employeeEmail = tc.employee?.email?.toLowerCase() || '';
+    const name = tc.name?.toLowerCase() || '';
+    const email = tc.email?.toLowerCase() || '';
     const search = searchTerm.toLowerCase();
-    return employeeName.includes(search) || employeeEmail.includes(search);
+    return name.includes(search) || email.includes(search);
   });
 
   // Pagination
@@ -72,27 +63,34 @@ export const TimecardsManagement = () => {
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Date', 'Employee Name', 'Employee Email', 'Hours Worked', 'Notes', 'Status'];
+    const monthName = getMonthName();
+    const headers = ['Month/Year', 'Name of the Employee', 'Working Hours', 'Hourly Pay', 'Total Pay'];
+    
     const csvData = filteredTimecards.map(tc => [
-      new Date(tc.date).toLocaleDateString(),
-      tc.employee?.name || 'Unknown',
-      tc.employee?.email || 'N/A',
-      tc.hoursWorked,
-      tc.notes || '',
-      tc.isLocked ? 'Locked' : 'Open'
+      monthName,
+      tc.name || 'Unknown',
+      tc.totalHours.toFixed(2),
+      tc.hourlyPay.toFixed(2),
+      tc.totalPay.toFixed(2)
     ]);
+
+    // Calculate totals
+    const totalHours = filteredTimecards.reduce((sum, tc) => sum + tc.totalHours, 0);
+    const totalPay = filteredTimecards.reduce((sum, tc) => sum + tc.totalPay, 0);
 
     const csvContent = [
       headers.join(','),
-      ...csvData.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ...csvData.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+      '',
+      `"TOTAL","",${totalHours.toFixed(2)},,"${totalPay.toFixed(2)}"`
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `timecards_${selectedMonth}.csv`;
+    link.download = `monthly_timecards_${selectedMonth}.csv`;
     link.click();
-    toast.success('Timecards exported successfully!');
+    toast.success('Monthly timecards exported successfully!');
   };
 
   const formatDate = (dateStr) => {
@@ -252,60 +250,46 @@ export const TimecardsManagement = () => {
                 <table className="w-full">
                   <thead className="bg-slate-800/50">
                     <tr>
-                      <th className="text-left text-slate-300 font-semibold px-6 py-4">Date</th>
                       <th className="text-left text-slate-300 font-semibold px-6 py-4">Employee</th>
-                      <th className="text-left text-slate-300 font-semibold px-6 py-4">Department</th>
                       <th className="text-center text-slate-300 font-semibold px-6 py-4">Hours</th>
-                      <th className="text-left text-slate-300 font-semibold px-6 py-4">Notes</th>
-                      <th className="text-center text-slate-300 font-semibold px-6 py-4">Status</th>
+                      <th className="text-center text-slate-300 font-semibold px-6 py-4">Hourly Pay</th>
+                      <th className="text-center text-slate-300 font-semibold px-6 py-4">Total Pay</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {paginatedTimecards.map((tc) => (
-                      <tr key={tc.id} className="hover:bg-white/5 transition">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-slate-500" />
-                            <span className="text-white">{formatDate(tc.date)}</span>
-                          </div>
-                        </td>
+                      <tr key={tc.userId} className="hover:bg-white/5 transition">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-blue-600/30 rounded-full flex items-center justify-center">
                               <User className="w-4 h-4 text-blue-400" />
                             </div>
                             <div>
-                              <p className="text-white font-medium">{tc.employee?.name || 'Unknown'}</p>
-                              <p className="text-slate-400 text-sm">{tc.employee?.email || 'N/A'}</p>
+                              <p className="text-white font-medium">{tc.name || 'Unknown'}</p>
+                              <p className="text-slate-400 text-sm">{tc.email || 'N/A'}</p>
+                              <p className="text-slate-500 text-xs mt-0.5 capitalize">{tc.role || ''}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="text-slate-300">{tc.employee?.department || '-'}</span>
-                        </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`inline-flex items-center justify-center min-w-[60px] px-3 py-1 rounded-full font-bold ${
-                            tc.hoursWorked >= 8 
+                            tc.totalHours >= 160 
                               ? 'bg-green-600/30 text-green-400' 
-                              : tc.hoursWorked >= 4 
+                              : tc.totalHours >= 80 
                                 ? 'bg-yellow-600/30 text-yellow-400'
                                 : 'bg-slate-600/30 text-slate-300'
                           }`}>
-                            {tc.hoursWorked}h
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-slate-300 truncate max-w-[200px] block">
-                            {tc.notes || '-'}
+                            {tc.totalHours.toFixed(2)}h
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                            tc.isLocked 
-                              ? 'bg-red-600/30 text-red-400' 
-                              : 'bg-blue-600/30 text-blue-400'
-                          }`}>
-                            {tc.isLocked ? 'Locked' : 'Open'}
+                          <span className="text-white font-semibold">
+                            ${tc.hourlyPay.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-green-400 font-bold">
+                            ${tc.totalPay.toFixed(2)}
                           </span>
                         </td>
                       </tr>

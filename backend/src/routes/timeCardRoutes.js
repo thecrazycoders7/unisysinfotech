@@ -478,7 +478,7 @@ router.get('/admin/all-entries', protect, authorize('admin'), async (req, res) =
       ...uniqueEmployeeIds.map(async (empId) => {
         const { data: employee } = await supabase
           .from('users')
-          .select('id, name, email, designation, department')
+          .select('id, name, email, designation, department, hourly_pay')
           .eq('id', empId)
           .single();
         if (employee) employeeMap[empId] = employee;
@@ -511,7 +511,8 @@ router.get('/admin/all-entries', protect, authorize('admin'), async (req, res) =
         name: employeeMap[card.employee_id].name,
         email: employeeMap[card.employee_id].email,
         designation: employeeMap[card.employee_id].designation,
-        department: employeeMap[card.employee_id].department
+        department: employeeMap[card.employee_id].department,
+        hourlyPay: parseFloat(employeeMap[card.employee_id].hourly_pay || 0)
       } : null,
       employer: employerMap[card.employer_id] ? {
         _id: employerMap[card.employer_id].id,
@@ -532,6 +533,95 @@ router.get('/admin/all-entries', protect, authorize('admin'), async (req, res) =
     });
   } catch (error) {
     console.error('Error fetching admin timecards:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+/**
+ * ADMIN: Get monthly aggregated timecards for employees and managers
+ * GET /api/timecards/admin/monthly-summary
+ */
+router.get('/admin/monthly-summary', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { month, year } = req.query; // Format: month="01", year="2026"
+    
+    if (!month || !year) {
+      return res.status(400).json({ message: 'Month and year are required' });
+    }
+
+    // Calculate date range for the selected month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    // Fetch all timecards for the month
+    const { data: timeCards, error } = await supabase
+      .from('time_cards')
+      .select('*')
+      .gte('date', startDate.toISOString().split('T')[0])
+      .lte('date', endDate.toISOString().split('T')[0]);
+
+    if (error) throw error;
+
+    // Get unique user IDs (both employees and managers who logged time)
+    const uniqueUserIds = [...new Set((timeCards || []).map(c => c.employee_id).filter(Boolean))];
+    
+    // Fetch user info for all users who have timecards (employees and managers)
+    const userMap = {};
+    await Promise.all(
+      uniqueUserIds.map(async (userId) => {
+        const { data: user } = await supabase
+          .from('users')
+          .select('id, name, email, role, designation, department, hourly_pay')
+          .eq('id', userId)
+          .single();
+        if (user) userMap[userId] = user;
+      })
+    );
+
+    // Aggregate hours by user (only for employees and managers, not admins)
+    const monthlySummary = {};
+    (timeCards || []).forEach(card => {
+      const userId = card.employee_id;
+      const user = userMap[userId];
+      
+      // Only include employees and managers
+      if (user && (user.role === 'employee' || user.role === 'employer')) {
+        if (!monthlySummary[userId]) {
+          monthlySummary[userId] = {
+            userId: userId,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            designation: user.designation || '',
+            department: user.department || '',
+            hourlyPay: parseFloat(user.hourly_pay || 0),
+            totalHours: 0
+          };
+        }
+        monthlySummary[userId].totalHours += parseFloat(card.hours_worked || 0);
+      }
+    });
+
+    // Convert to array and calculate total pay
+    const summaryArray = Object.values(monthlySummary).map(item => ({
+      ...item,
+      totalPay: item.hourlyPay * item.totalHours
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    // Calculate totals
+    const totalHours = summaryArray.reduce((sum, item) => sum + item.totalHours, 0);
+    const totalPay = summaryArray.reduce((sum, item) => sum + item.totalPay, 0);
+
+    res.status(200).json({
+      success: true,
+      month: `${year}-${String(month).padStart(2, '0')}`,
+      count: summaryArray.length,
+      totalHours: Math.round(totalHours * 100) / 100,
+      totalPay: Math.round(totalPay * 100) / 100,
+      timecards: summaryArray
+    });
+  } catch (error) {
+    console.error('Error fetching monthly summary:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

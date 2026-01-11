@@ -324,12 +324,12 @@ export const InvoicesPayroll = () => {
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                 >
-                  <option value="">All Status</option>
-                  <option value="Received">Received</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Waiting on Client">Waiting on Client</option>
+                  <option value="" className="bg-slate-800">All Status</option>
+                  <option value="Received" className="bg-slate-800">Received</option>
+                  <option value="Pending" className="bg-slate-800">Pending</option>
+                  <option value="Waiting on Client" className="bg-slate-800">Waiting on Client</option>
                 </select>
                 <button
                   onClick={() => {
@@ -641,10 +641,10 @@ export const InvoicesPayroll = () => {
                       required
                       value={formData.employmentType}
                       onChange={(e) => setFormData({ ...formData, employmentType: e.target.value, name1099: e.target.value === 'W2' ? '' : formData.name1099 })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                     >
-                      <option value="W2">W2</option>
-                      <option value="1099">1099</option>
+                      <option value="W2" className="bg-slate-800">W2</option>
+                      <option value="1099" className="bg-slate-800">1099</option>
                     </select>
                   </div>
                   {formData.employmentType === '1099' && (
@@ -674,11 +674,11 @@ export const InvoicesPayroll = () => {
                         // Clear payment date if status is not "Received"
                         paymentReceivedDate: e.target.value === 'Received' ? formData.paymentReceivedDate : ''
                       })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                     >
-                      <option value="Pending">Pending</option>
-                      <option value="Received">Received</option>
-                      <option value="Waiting on Client">Waiting on Client</option>
+                      <option value="Pending" className="bg-slate-800">Pending</option>
+                      <option value="Received" className="bg-slate-800">Received</option>
+                      <option value="Waiting on Client" className="bg-slate-800">Waiting on Client</option>
                     </select>
                   </div>
                   {formData.status === 'Received' && (

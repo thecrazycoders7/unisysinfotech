@@ -369,3 +369,29 @@ body.dark {
   background-color: #1A1A2E;
   color: #F8FAFC;
 }
+
+/* Global Select and Option Styling for Dark Theme */
+select {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+select option {
+  background-color: #1e293b !important; /* slate-800 */
+  color: white !important;
+  padding: 0.5rem;
+}
+
+select:focus option:checked {
+  background-color: #3b82f6 !important; /* blue-500 */
+  color: white !important;
+}
+
+select option:hover {
+  background-color: #475569 !important; /* slate-600 */
+}
+
+select option:checked {
+  background-color: #3b82f6 !important; /* blue-500 */
+  color: white !important;
+}

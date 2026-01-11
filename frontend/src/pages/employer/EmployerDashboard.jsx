@@ -273,11 +273,11 @@ export const EmployerDashboard = () => {
               <select
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="px-4 py-2 rounded-lg border bg-slate-800 border-blue-900/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                className="px-4 py-2 rounded-lg border bg-slate-800 border-blue-900/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer"
               >
-                <option value="">All Employees</option>
+                <option value="" className="bg-slate-800">All Employees</option>
                 {employees.map(emp => (
-                  <option key={emp._id} value={emp._id}>
+                  <option key={emp._id} value={emp._id} className="bg-slate-800">
                     {emp.name}
                   </option>
                 ))}

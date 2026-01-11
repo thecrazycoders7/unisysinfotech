@@ -525,16 +525,16 @@ export const CareersPageNew = () => {
                         value={formData.experience}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                       >
-                        <option value="">Select Experience</option>
-                        <option value="Fresher">Fresher</option>
-                        <option value="0-1 years">0-1 years</option>
-                        <option value="1-3 years">1-3 years</option>
-                        <option value="3-5 years">3-5 years</option>
-                        <option value="5-7 years">5-7 years</option>
-                        <option value="7-10 years">7-10 years</option>
-                        <option value="10+ years">10+ years</option>
+                        <option value="" className="bg-slate-800">Select Experience</option>
+                        <option value="Fresher" className="bg-slate-800">Fresher</option>
+                        <option value="0-1 years" className="bg-slate-800">0-1 years</option>
+                        <option value="1-3 years" className="bg-slate-800">1-3 years</option>
+                        <option value="3-5 years" className="bg-slate-800">3-5 years</option>
+                        <option value="5-7 years" className="bg-slate-800">5-7 years</option>
+                        <option value="7-10 years" className="bg-slate-800">7-10 years</option>
+                        <option value="10+ years" className="bg-slate-800">10+ years</option>
                       </select>
                     </div>
                     <div>
@@ -544,14 +544,14 @@ export const CareersPageNew = () => {
                         value={formData.noticePeriod}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                       >
-                        <option value="">Select Notice Period</option>
-                        <option value="Immediate">Immediate</option>
-                        <option value="15 days">15 days</option>
-                        <option value="30 days">30 days</option>
-                        <option value="60 days">60 days</option>
-                        <option value="90 days">90 days</option>
+                        <option value="" className="bg-slate-800">Select Notice Period</option>
+                        <option value="Immediate" className="bg-slate-800">Immediate</option>
+                        <option value="15 days" className="bg-slate-800">15 days</option>
+                        <option value="30 days" className="bg-slate-800">30 days</option>
+                        <option value="60 days" className="bg-slate-800">60 days</option>
+                        <option value="90 days" className="bg-slate-800">90 days</option>
                       </select>
                     </div>
                     <div>

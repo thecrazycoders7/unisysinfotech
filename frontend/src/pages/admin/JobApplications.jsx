@@ -285,15 +285,15 @@ export const JobApplications = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                 >
-                  <option value="all">All Status</option>
-                  <option value="new">New</option>
-                  <option value="reviewing">Reviewing</option>
-                  <option value="shortlisted">Shortlisted</option>
-                  <option value="interviewed">Interviewed</option>
-                  <option value="offered">Offered</option>
-                  <option value="rejected">Rejected</option>
+                  <option value="all" className="bg-slate-800">All Status</option>
+                  <option value="new" className="bg-slate-800">New</option>
+                  <option value="reviewing" className="bg-slate-800">Reviewing</option>
+                  <option value="shortlisted" className="bg-slate-800">Shortlisted</option>
+                  <option value="interviewed" className="bg-slate-800">Interviewed</option>
+                  <option value="offered" className="bg-slate-800">Offered</option>
+                  <option value="rejected" className="bg-slate-800">Rejected</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
@@ -301,11 +301,11 @@ export const JobApplications = () => {
                 <select
                   value={jobFilter}
                   onChange={(e) => setJobFilter(e.target.value)}
-                  className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                 >
-                  <option value="all">All Jobs</option>
+                  <option value="all" className="bg-slate-800">All Jobs</option>
                   {jobs.map(job => (
-                    <option key={job._id || job.id} value={job._id || job.id}>
+                    <option key={job._id || job.id} value={job._id || job.id} className="bg-slate-800">
                       {job.title}
                     </option>
                   ))}
