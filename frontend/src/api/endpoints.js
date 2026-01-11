@@ -5,18 +5,28 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data), // Disabled on backend
   login: (data) => api.post('/auth/login', data), // Now accepts selectedRole
   logout: () => api.post('/auth/logout'),
-  getCurrentUser: () => api.get('/auth/me')
+  getCurrentUser: () => api.get('/auth/me'),
+  // Password Reset
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  verifyResetToken: (token) => api.get(`/auth/verify-reset-token/${token}`),
+  resetPassword: (data) => api.post('/auth/reset-password', data)
 };
 
 // Admin User Management APIs
 export const adminAPI = {
+  // Dashboard Stats (Optimized - single endpoint)
+  getDashboardStats: () => api.get('/admin/dashboard-stats'),
+  
   // User Management
   createUser: (data) => api.post('/admin/users/create', data),
   getUsers: (params) => api.get('/admin/users', { params }),
   getEmployers: () => api.get('/admin/employers'),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   updateUserStatus: (id, isActive) => api.patch(`/admin/users/${id}/status`, { isActive }),
-  deleteUser: (id) => api.delete(`/admin/users/${id}`)
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  // Supabase Auth sync (for password reset via email)
+  syncUserToAuth: (id, data) => api.post(`/admin/users/${id}/sync-auth`, data),
+  syncAllUsersToAuth: () => api.post('/admin/users/sync-all-auth')
 };
 
 // TimeCard APIs

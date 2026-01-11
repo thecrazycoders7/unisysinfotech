@@ -117,26 +117,35 @@ export const HomePageNew = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.15),transparent_50%)]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(37,99,235,0.1),transparent_50%)]"></div>
 
-        <div className="relative max-w-7xl mx-auto text-center z-10">
+        <div className="relative max-w-7xl mx-auto text-center z-10 px-2 sm:px-4">
           {/* Main Heading */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif" }}>
-            <span className="text-white animate-fade-in-up opacity-0" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
+          <h1 
+            className="font-bold mb-6 leading-[1.15]" 
+            style={{ 
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif",
+              fontSize: 'clamp(1.75rem, 5vw + 0.5rem, 4rem)'
+            }}
+          >
+            <span className="text-white animate-fade-in-up opacity-0 block" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
               Empowering Your Business with
             </span>
-            <br />
-            <span className="text-slate-400 animate-fade-in-up opacity-0" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
+            <span className="text-slate-400 animate-fade-in-up opacity-0 block mt-1" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
               Real-time Solutions for{' '}
-            </span>
-            <span 
-              key={rotatingWord}
-              className="text-blue-400 inline-block min-w-[200px] animate-word-fade"
-            >
-              {words[rotatingWord]}
+              <span 
+                key={rotatingWord}
+                className="text-blue-400 inline-block animate-word-fade"
+                style={{ minWidth: 'clamp(80px, 15vw, 180px)' }}
+              >
+                {words[rotatingWord]}
+              </span>
             </span>
           </h1>
 
           {/* Subheading */}
-          <p className="text-lg md:text-xl text-slate-400 mb-10 max-w-3xl mx-auto leading-relaxed">
+          <p 
+            className="text-slate-400 mb-10 max-w-3xl mx-auto leading-relaxed"
+            style={{ fontSize: 'clamp(0.95rem, 1.5vw + 0.3rem, 1.25rem)' }}
+          >
             Empower your team with an all-in-one solution designed to streamline workflows, boost collaboration, and drive productivity.
           </p>
 
@@ -170,25 +179,98 @@ export const HomePageNew = () => {
             <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-blue-400 mx-auto rounded-full"></div>
           </div>
 
-          {/* Client Logos with Horizontal Sliding Animation */}
-          <div className="overflow-hidden">
-            {!logosLoading && clientLogos.length > 0 && (
-              <div className="flex animate-scroll-left">
-                {/* Multiple sets for truly seamless infinite scrolling */}
-                {[...Array(3)].map((_, setIndex) => (
-                  <React.Fragment key={`set-${setIndex}`}>
-                    {clientLogos.map((logo, logoIndex) => (
-                      <div key={`${logo._id}-set${setIndex}-${logoIndex}`} className="flex-shrink-0 mx-8">
-                        <img 
-                          src={logo.logoUrl} 
-                          alt={logo.name}
-                          loading="lazy"
-                          className="h-24 object-contain"
-                        />
+          {/* Client Logos Display */}
+          <div className="relative overflow-hidden">
+            {logosLoading ? (
+              /* Skeleton Loading for Client Logos */
+              <div className="flex justify-center items-center gap-6 md:gap-10 flex-wrap py-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={`skeleton-${i}`} className="animate-pulse">
+                    <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 md:p-6">
+                      <div className="h-16 md:h-20 w-[120px] md:w-[160px] bg-white/20 rounded-lg"></div>
+                    </div>
+                    <div className="h-3 w-20 bg-white/10 rounded mx-auto mt-2"></div>
+                  </div>
+                ))}
+              </div>
+            ) : clientLogos.length > 0 ? (
+              <>
+                {/* Show scrolling animation only when there are 4+ logos */}
+                {clientLogos.length >= 4 ? (
+                  <>
+                    {/* Gradient fade on edges for scrolling view */}
+                    <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0a1628] to-transparent z-10 pointer-events-none"></div>
+                    <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0a1628] to-transparent z-10 pointer-events-none"></div>
+                    
+                    <div 
+                      className="flex animate-scroll-left hover:pause-animation"
+                      style={{ 
+                        width: 'max-content',
+                        animationDuration: `${Math.max(20, clientLogos.length * 5)}s`
+                      }}
+                    >
+                      {/* Multiple sets for seamless infinite scrolling */}
+                      {[...Array(3)].map((_, setIndex) => (
+                        <div key={`set-${setIndex}`} className="flex">
+                          {clientLogos.map((logo, logoIndex) => (
+                            <div 
+                              key={`${logo._id || logo.id}-set${setIndex}-${logoIndex}`} 
+                              className="flex-shrink-0 mx-6 md:mx-10 group"
+                            >
+                              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 md:p-6 transition-all duration-300 group-hover:bg-white/10 group-hover:border-blue-500/30 group-hover:scale-105">
+                                <img 
+                                  src={logo.logoUrl} 
+                                  alt={logo.name || 'Client Logo'}
+                                  loading="lazy"
+                                  className="h-16 md:h-20 w-auto max-w-[150px] md:max-w-[200px] object-contain filter brightness-90 group-hover:brightness-100 transition-all duration-300"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                              {logo.name && (
+                                <p className="text-slate-400 text-xs md:text-sm text-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                  {logo.name}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  /* Static display for fewer logos (1-3) - no scrolling, just centered */
+                  <div className="flex justify-center items-center gap-6 md:gap-10 flex-wrap py-4">
+                    {clientLogos.map((logo) => (
+                      <div 
+                        key={logo._id || logo.id} 
+                        className="group"
+                      >
+                        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 md:p-6 transition-all duration-300 group-hover:bg-white/10 group-hover:border-blue-500/30 group-hover:scale-105">
+                          <img 
+                            src={logo.logoUrl} 
+                            alt={logo.name || 'Client Logo'}
+                            loading="lazy"
+                            className="h-16 md:h-20 w-auto max-w-[150px] md:max-w-[200px] object-contain filter brightness-90 group-hover:brightness-100 transition-all duration-300"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        {logo.name && (
+                          <p className="text-slate-400 text-xs md:text-sm text-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            {logo.name}
+                          </p>
+                        )}
                       </div>
                     ))}
-                  </React.Fragment>
-                ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center text-slate-400 py-8">
+                <p>Client logos coming soon...</p>
               </div>
             )}
           </div>

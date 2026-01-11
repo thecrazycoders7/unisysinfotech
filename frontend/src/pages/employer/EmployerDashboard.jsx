@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/index.js';
 import { useAuthStore } from '../../store/index.js';
 import { timeCardAPI } from '../../api/endpoints.js';
+import { supabase } from '../../config/supabase.js';
 import { toast } from 'react-toastify';
-import { Calendar, Users, Clock, ChevronLeft, ChevronRight, BarChart3, ArrowLeft, LogOut, Home, ClipboardList, Lock } from 'lucide-react';
+import { Calendar, Users, Clock, ChevronLeft, ChevronRight, BarChart3, ArrowLeft, LogOut, Home, ClipboardList, Wifi, WifiOff } from 'lucide-react';
 
 /**
  * Employer Dashboard
@@ -26,6 +27,8 @@ export const EmployerDashboard = () => {
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [currentWeekStart, setCurrentWeekStart] = useState(getMonday(new Date()));
   const [loading, setLoading] = useState(false);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const subscriptionRef = useRef(null);
 
   // Get Monday of current week
   function getMonday(date) {
@@ -44,6 +47,59 @@ export const EmployerDashboard = () => {
   useEffect(() => {
     fetchWeeklySummary();
   }, [currentWeekStart, selectedEmployee]);
+
+  // Setup real-time subscriptions (only once on mount)
+  useEffect(() => {
+    const setupRealtimeSubscriptions = () => {
+      // Create a channel for real-time updates
+      const channel = supabase
+        .channel('employer-dashboard-realtime')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'time_cards' },
+          (payload) => {
+            console.log('🔄 Timecard updated:', payload.eventType);
+            // Refresh data when timecards change
+            fetchWeeklySummary();
+            fetchEmployees();
+            if (payload.eventType === 'INSERT') {
+              toast.info('New timecard entry added', { autoClose: 2000 });
+            } else if (payload.eventType === 'UPDATE') {
+              toast.info('Timecard entry updated', { autoClose: 2000 });
+            } else if (payload.eventType === 'DELETE') {
+              toast.info('Timecard entry deleted', { autoClose: 2000 });
+            }
+          }
+        )
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'users' },
+          (payload) => {
+            console.log('🔄 User updated:', payload.eventType);
+            // Refresh employees list when users change
+            fetchEmployees();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            setRealtimeConnected(true);
+            console.log('✅ Realtime subscriptions active for employer dashboard');
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            setRealtimeConnected(false);
+            console.log('❌ Realtime connection closed');
+          }
+        });
+
+      subscriptionRef.current = channel;
+    };
+
+    setupRealtimeSubscriptions();
+
+    // Cleanup on unmount
+    return () => {
+      if (subscriptionRef.current) {
+        supabase.removeChannel(subscriptionRef.current);
+      }
+    };
+  }, []); // Empty dependency array - setup once on mount
 
   const fetchEmployees = async () => {
     try {
@@ -136,13 +192,6 @@ export const EmployerDashboard = () => {
                 <ClipboardList size={18} />
                 <span className="font-medium">My Timecards</span>
               </button>
-              <button
-                onClick={() => navigate('/employer/change-password')}
-                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 rounded-lg transition-colors border border-purple-500/30 text-sm"
-              >
-                <Lock size={18} />
-                <span className="font-medium">Change Password</span>
-              </button>
             </div>
             <div className="flex items-center justify-between lg:justify-end gap-4">
               <div className="text-left lg:text-right">
@@ -158,12 +207,30 @@ export const EmployerDashboard = () => {
               </button>
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            Employer Dashboard
-          </h1>
-          <p className="text-slate-400">
-            View your employees' weekly timecards
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl md:text-4xl font-bold">
+                  Employer Dashboard
+                </h1>
+                {realtimeConnected && (
+                  <span className="text-xs text-green-400 flex items-center gap-1 px-2 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
+                    <Wifi size={12} />
+                    Live
+                  </span>
+                )}
+                {!realtimeConnected && (
+                  <span className="text-xs text-slate-500 flex items-center gap-1 px-2 py-1 bg-slate-500/10 border border-slate-500/30 rounded-full">
+                    <WifiOff size={12} />
+                    Offline
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-400">
+                View your employees' weekly timecards
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Filters and Controls */}

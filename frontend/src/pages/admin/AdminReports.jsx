@@ -1,51 +1,124 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useThemeStore } from '../../store/index.js';
 import { reportsAPI, timeCardAPI, adminAPI } from '../../api/endpoints.js';
 import { toast } from 'react-toastify';
-import { BarChart3, PieChart, TrendingUp, Users, Clock, Download, Calendar, FileSpreadsheet, FileText } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, Users, Clock, Download, Calendar, FileSpreadsheet, FileText, RefreshCw, Loader2, Wifi, WifiOff } from 'lucide-react';
+import supabase from '../../config/supabase.js';
+
+// Lazy load Recharts components for better performance
+const RechartsComponents = lazy(() => import('recharts').then(module => ({
+  default: () => null,
+  BarChart: module.BarChart,
+  Bar: module.Bar,
+  LineChart: module.LineChart,
+  Line: module.Line,
+  PieChart: module.PieChart,
+  Pie: module.Pie,
+  Cell: module.Cell,
+  XAxis: module.XAxis,
+  YAxis: module.YAxis,
+  CartesianGrid: module.CartesianGrid,
+  Tooltip: module.Tooltip,
+  Legend: module.Legend,
+  ResponsiveContainer: module.ResponsiveContainer
+})));
+
+// Import recharts directly for the component
 import { BarChart, Bar, LineChart, Line, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export const AdminReports = () => {
   const isDark = useThemeStore((state) => state.isDark);
-  const [hoursSummary, setHoursSummary] = React.useState([]);
-  const [clientActivity, setClientActivity] = React.useState([]);
-  const [employeeData, setEmployeeData] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [exporting, setExporting] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState('employees'); // 'employees' or 'employers'
+  const [hoursSummary, setHoursSummary] = useState([]);
+  const [clientActivity, setClientActivity] = useState([]);
+  const [employeeData, setEmployeeData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState('employees');
+  const [isConnected, setIsConnected] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  React.useEffect(() => {
-    fetchReports();
-  }, []);
+  // Fetch all reports data
+  const fetchReports = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
-  const fetchReports = async () => {
-    setLoading(true);
     try {
       const [hourRes, clientRes, usersRes] = await Promise.all([
         reportsAPI.getHoursSummary(),
         reportsAPI.getClientActivity(),
         adminAPI.getUsers()
       ]);
+      
       setHoursSummary(hourRes.data.summary || []);
       setClientActivity(clientRes.data.report || []);
       
-      // Separate employees and employers
       const allUsers = usersRes.data.users || [];
       setEmployeeData(allUsers);
+      setLastUpdated(new Date());
     } catch (error) {
+      console.error('Error fetching reports:', error);
       toast.error('Failed to fetch reports');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  // Set up Supabase real-time subscriptions
+  useEffect(() => {
+    // Subscribe to users table changes
+    const usersChannel = supabase
+      .channel('reports-users-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        (payload) => {
+          console.log('Users change detected:', payload.eventType);
+          // Refetch data on any change
+          fetchReports(true);
+        }
+      )
+      .subscribe((status) => {
+        setIsConnected(status === 'SUBSCRIBED');
+      });
+
+    // Subscribe to time_cards table changes
+    const timeCardsChannel = supabase
+      .channel('reports-timecards-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'time_cards' },
+        (payload) => {
+          console.log('Time cards change detected:', payload.eventType);
+          // Refetch data on any change
+          fetchReports(true);
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(usersChannel);
+      supabase.removeChannel(timeCardsChannel);
+    };
+  }, [fetchReports]);
 
   // Filter data based on active tab
-  const getFilteredData = () => {
+  const getFilteredData = useCallback(() => {
     if (activeTab === 'employers') {
       return employeeData.filter(user => user.role === 'employer');
     }
     return employeeData.filter(user => user.role === 'employee');
-  };
+  }, [activeTab, employeeData]);
 
   const filteredEmployeeData = getFilteredData();
 
@@ -55,7 +128,6 @@ export const AdminReports = () => {
     const csvRows = data.map(row => 
       headers.map(header => {
         const value = row[header] || '';
-        // Escape quotes and wrap in quotes if contains comma
         const escaped = String(value).replace(/"/g, '""');
         return escaped.includes(',') ? `"${escaped}"` : escaped;
       }).join(',')
@@ -76,22 +148,19 @@ export const AdminReports = () => {
     document.body.removeChild(link);
   };
 
-  // Export comprehensive employee/employer report based on active tab
+  // Export comprehensive employee/employer report
   const exportEmployeeReport = async () => {
     setExporting(true);
     try {
       let timecards = [];
       
-      // Try to fetch timecard data - use fallback if it fails
       try {
         const timecardsRes = await timeCardAPI.getAllEntries();
         timecards = timecardsRes.data.timeCards || [];
       } catch (tcError) {
         console.warn('Could not fetch timecards, exporting user list only:', tcError);
-        // Continue with empty timecards array
       }
 
-      // Create comprehensive report based on active tab
       const reportData = [];
       const targetRole = activeTab === 'employers' ? 'employer' : 'employee';
       
@@ -102,10 +171,7 @@ export const AdminReports = () => {
       
       filteredEmployeeData.forEach(user => {
         if (user.role === targetRole) {
-          // Find employer/manager
           const manager = employeeData.find(u => u._id === user.employerId);
-          
-          // Get user's timecards
           const userTimecards = timecards.filter(tc => 
             tc.employeeId?._id === user._id || tc.employeeId === user._id
           );
@@ -128,7 +194,6 @@ export const AdminReports = () => {
               });
             });
           } else {
-            // Include users with no timecards
             reportData.push({
               'Name': user.name,
               'Email': user.email,
@@ -164,14 +229,13 @@ export const AdminReports = () => {
     }
   };
 
-  // Export employee/employer summary (total hours per user) based on active tab
+  // Export employee/employer summary
   const exportEmployeeSummary = async () => {
     setExporting(true);
     try {
       let timecards = [];
       const targetRole = activeTab === 'employers' ? 'employer' : 'employee';
       
-      // Try to fetch timecard data
       try {
         const timecardsRes = await timeCardAPI.getAllEntries();
         timecards = timecardsRes.data.timeCards || [];
@@ -227,16 +291,21 @@ export const AdminReports = () => {
     }
   };
 
-  // Export client/project report
+  // Export client report
   const exportClientReport = () => {
     setExporting(true);
     try {
+      if (clientActivity.length === 0) {
+        toast.error('No client data available to export');
+        return;
+      }
+      
       const reportData = clientActivity.map(item => ({
         'Client/Project': item.clientName || 'Unassigned',
-        'Total Hours': item.totalHours.toFixed(2),
-        'Number of Entries': item.count,
-        'Average Hours per Entry': (item.totalHours / item.count).toFixed(2),
-        'Percentage of Total': ((item.totalHours / clientActivity.reduce((sum, c) => sum + c.totalHours, 0)) * 100).toFixed(2) + '%'
+        'Total Hours': (item.totalHours || 0).toFixed(2),
+        'Number of Entries': item.count || 0,
+        'Average Hours per Entry': item.count ? ((item.totalHours || 0) / item.count).toFixed(2) : '0.00',
+        'Percentage of Total': ((item.totalHours / clientActivity.reduce((sum, c) => sum + (c.totalHours || 0), 0)) * 100).toFixed(2) + '%'
       }));
 
       const headers = ['Client/Project', 'Total Hours', 'Number of Entries', 'Average Hours per Entry', 'Percentage of Total'];
@@ -251,15 +320,20 @@ export const AdminReports = () => {
     }
   };
 
-  // Export monthly hours summary
+  // Export monthly summary
   const exportMonthlySummary = () => {
     setExporting(true);
     try {
+      if (hoursSummary.length === 0) {
+        toast.error('No monthly data available to export');
+        return;
+      }
+      
       const reportData = hoursSummary.map(item => ({
-        'Month': item._id.month,
-        'Total Hours': item.totalHours.toFixed(2),
-        'Number of Entries': item.count,
-        'Average Hours per Entry': (item.totalHours / item.count).toFixed(2)
+        'Month': item._id?.month || 'Unknown',
+        'Total Hours': (item.totalHours || 0).toFixed(2),
+        'Number of Entries': item.count || 0,
+        'Average Hours per Entry': item.count ? ((item.totalHours || 0) / item.count).toFixed(2) : '0.00'
       }));
 
       const headers = ['Month', 'Total Hours', 'Number of Entries', 'Average Hours per Entry'];
@@ -274,8 +348,8 @@ export const AdminReports = () => {
     }
   };
 
-  // Calculate totals based on active tab
-  const getRoleSpecificStats = React.useMemo(() => {
+  // Calculate role-specific stats
+  const getRoleSpecificStats = useMemo(() => {
     const targetRole = activeTab === 'employers' ? 'employer' : 'employee';
     const roleUsers = filteredEmployeeData.filter(u => u.role === targetRole);
     const activeUsers = roleUsers.filter(u => u.isActive !== false);
@@ -288,14 +362,10 @@ export const AdminReports = () => {
   }, [activeTab, filteredEmployeeData]);
 
   // Calculate totals
-  const totalHours = hoursSummary.reduce((sum, item) => sum + item.totalHours, 0);
-  const totalEntries = hoursSummary.reduce((sum, item) => sum + item.count, 0);
+  const totalHours = useMemo(() => hoursSummary.reduce((sum, item) => sum + (item.totalHours || 0), 0), [hoursSummary]);
+  const totalEntries = useMemo(() => hoursSummary.reduce((sum, item) => sum + (item.count || 0), 0), [hoursSummary]);
   const totalClients = clientActivity.length;
   const avgHoursPerEntry = totalEntries > 0 ? totalHours / totalEntries : 0;
-
-  // Get max value for chart scaling
-  const maxHours = Math.max(...hoursSummary.map(item => item.totalHours), 0);
-  const maxClientHours = Math.max(...clientActivity.map(item => item.totalHours), 0);
 
   // Custom tooltip for Recharts
   const CustomTooltip = ({ active, payload, label }) => {
@@ -305,7 +375,7 @@ export const AdminReports = () => {
           <p className="text-white font-semibold mb-1">{label}</p>
           {payload.map((entry, index) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.value}
+              {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
             </p>
           ))}
         </div>
@@ -317,18 +387,93 @@ export const AdminReports = () => {
   // Colors for pie chart
   const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6'];
 
+  // Format last updated time
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return '';
+    const now = new Date();
+    const diff = Math.floor((now - lastUpdated) / 1000);
+    
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return lastUpdated.toLocaleTimeString();
+  };
+
+  // Skeleton Components
+  const StatCardSkeleton = () => (
+    <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 animate-pulse">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-14 h-14 bg-white/20 rounded-xl"></div>
+        <div className="w-6 h-6 bg-white/20 rounded"></div>
+      </div>
+      <div className="w-24 h-4 bg-white/20 rounded mb-2"></div>
+      <div className="w-16 h-10 bg-white/20 rounded mb-2"></div>
+      <div className="w-32 h-3 bg-white/20 rounded"></div>
+    </div>
+  );
+
+  const ChartSkeleton = ({ height = 400 }) => (
+    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 animate-pulse">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-white/20 rounded-lg"></div>
+        <div className="w-48 h-6 bg-white/20 rounded"></div>
+      </div>
+      <div className={`bg-white/5 rounded-xl flex items-center justify-center`} style={{ height }}>
+        <Loader2 size={32} className="text-blue-400 animate-spin" />
+      </div>
+    </div>
+  );
+
+  const ExportSkeleton = () => (
+    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 animate-pulse">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-6 h-6 bg-white/20 rounded"></div>
+        <div className="w-48 h-6 bg-white/20 rounded"></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-12 bg-white/20 rounded-xl"></div>
+        ))}
+      </div>
+      <div className="w-96 h-4 bg-white/20 rounded mt-4"></div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
+          {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">Reports & Analytics</h1>
               <p className="text-slate-300">View system reports and analytics</p>
+              {lastUpdated && (
+                <p className="text-slate-500 text-sm mt-1">
+                  Last updated: {formatLastUpdated()}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Connection Status */}
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
+                <span className="text-sm font-medium">{isConnected ? 'Live' : 'Offline'}</span>
+              </div>
+              
+              {/* Refresh Button */}
+              <button
+                onClick={() => fetchReports(true)}
+                disabled={refreshing || loading}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-semibold px-4 py-3 rounded-xl transition-all duration-300"
+                title="Refresh data"
+              >
+                <RefreshCw size={20} className={refreshing ? 'animate-spin' : ''} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
             </div>
           </div>
           
-          {/* Tabs for Employee/Employer Timecards */}
+          {/* Tabs */}
           <div className="flex gap-4 mb-6">
             <button
               onClick={() => setActiveTab('employees')}
@@ -353,93 +498,132 @@ export const AdminReports = () => {
           </div>
 
           {/* Export Options */}
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <FileSpreadsheet className="w-6 h-6 text-green-400" />
-              <h2 className="text-xl font-bold text-white">Export Reports - {activeTab === 'employees' ? 'Employees' : 'Employers'}</h2>
+          {loading ? (
+            <ExportSkeleton />
+          ) : (
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <FileSpreadsheet className="w-6 h-6 text-green-400" />
+                <h2 className="text-xl font-bold text-white">Export Reports - {activeTab === 'employees' ? 'Employees' : 'Employers'}</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button 
+                  onClick={exportEmployeeReport}
+                  disabled={exporting}
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {exporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  {exporting ? 'Exporting...' : `${activeTab === 'employers' ? 'Employer' : 'Employee'} Details`}
+                </button>
+                
+                <button 
+                  onClick={exportEmployeeSummary}
+                  disabled={exporting}
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {exporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
+                  {exporting ? 'Exporting...' : `${activeTab === 'employers' ? 'Employer' : 'Employee'} Summary`}
+                </button>
+                
+                <button 
+                  onClick={exportClientReport}
+                  disabled={exporting}
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {exporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <BarChart3 className="w-5 h-5" />}
+                  {exporting ? 'Exporting...' : 'Client Report'}
+                </button>
+                
+                <button 
+                  onClick={exportMonthlySummary}
+                  disabled={exporting}
+                  className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {exporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Calendar className="w-5 h-5" />}
+                  {exporting ? 'Exporting...' : 'Monthly Summary'}
+                </button>
+              </div>
+              <p className="text-slate-400 text-sm mt-4">
+                <FileText className="w-4 h-4 inline mr-1" />
+                Export comprehensive reports including {activeTab === 'employers' ? 'employer' : 'employee'} hours, projects, managers, and detailed analytics in CSV format.
+              </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <button 
-                onClick={exportEmployeeReport}
-                disabled={exporting}
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-5 h-5" />
-                {exporting ? 'Exporting...' : `${activeTab === 'employers' ? 'Employer' : 'Employee'} Details`}
-              </button>
-              
-              <button 
-                onClick={exportEmployeeSummary}
-                disabled={exporting}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Users className="w-5 h-5" />
-                {exporting ? 'Exporting...' : `${activeTab === 'employers' ? 'Employer' : 'Employee'} Summary`}
-              </button>
-              
-              <button 
-                onClick={exportClientReport}
-                disabled={exporting}
-                className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <BarChart3 className="w-5 h-5" />
-                {exporting ? 'Exporting...' : 'Client Report'}
-              </button>
-              
-              <button 
-                onClick={exportMonthlySummary}
-                disabled={exporting}
-                className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Calendar className="w-5 h-5" />
-                {exporting ? 'Exporting...' : 'Monthly Summary'}
-              </button>
-            </div>
-            <p className="text-slate-400 text-sm mt-4">
-              <FileText className="w-4 h-4 inline mr-1" />
-              Export comprehensive reports including {activeTab === 'employers' ? 'employer' : 'employee'} hours, projects, managers, and detailed analytics in CSV format.
-            </p>
-          </div>
+          )}
 
           {/* Role-Specific Stats */}
-          <div className="bg-gradient-to-br from-indigo-600/20 to-indigo-800/20 backdrop-blur-sm border border-indigo-500/30 rounded-2xl p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-slate-400 text-sm font-medium mb-1">
-                  {getRoleSpecificStats.roleName} Overview
-                </h3>
-                <div className="flex items-baseline gap-4 mt-2">
-                  <div>
-                    <p className="text-3xl font-bold text-white">{getRoleSpecificStats.totalUsers}</p>
-                    <p className="text-slate-400 text-xs mt-1">Total {getRoleSpecificStats.roleName}</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-green-400">{getRoleSpecificStats.activeUsers}</p>
-                    <p className="text-slate-400 text-xs mt-1">Active</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-400">{getRoleSpecificStats.totalUsers - getRoleSpecificStats.activeUsers}</p>
-                    <p className="text-slate-400 text-xs mt-1">Inactive</p>
+          {loading ? (
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mt-6 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="w-32 h-4 bg-white/20 rounded mb-3"></div>
+                  <div className="flex items-baseline gap-4 mt-2">
+                    <div>
+                      <div className="w-12 h-8 bg-white/20 rounded mb-1"></div>
+                      <div className="w-24 h-3 bg-white/20 rounded"></div>
+                    </div>
+                    <div>
+                      <div className="w-10 h-7 bg-white/20 rounded mb-1"></div>
+                      <div className="w-12 h-3 bg-white/20 rounded"></div>
+                    </div>
+                    <div>
+                      <div className="w-10 h-7 bg-white/20 rounded mb-1"></div>
+                      <div className="w-16 h-3 bg-white/20 rounded"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-4 bg-indigo-500/20 rounded-xl">
-                <Users className="w-12 h-12 text-indigo-400" />
+                <div className="w-20 h-20 bg-white/20 rounded-xl"></div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-gradient-to-br from-indigo-600/20 to-indigo-800/20 backdrop-blur-sm border border-indigo-500/30 rounded-2xl p-6 shadow-xl mt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-slate-400 text-sm font-medium mb-1">
+                    {getRoleSpecificStats.roleName} Overview
+                  </h3>
+                  <div className="flex items-baseline gap-4 mt-2">
+                    <div>
+                      <p className="text-3xl font-bold text-white">{getRoleSpecificStats.totalUsers}</p>
+                      <p className="text-slate-400 text-xs mt-1">Total {getRoleSpecificStats.roleName}</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-green-400">{getRoleSpecificStats.activeUsers}</p>
+                      <p className="text-slate-400 text-xs mt-1">Active</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-400">{getRoleSpecificStats.totalUsers - getRoleSpecificStats.activeUsers}</p>
+                      <p className="text-slate-400 text-xs mt-1">Inactive</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 bg-indigo-500/20 rounded-xl">
+                  <Users className="w-12 h-12 text-indigo-400" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            <p className="text-slate-400 mt-4">Loading reports...</p>
+          <div className="space-y-8">
+            {/* Summary Cards Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map(i => <StatCardSkeleton key={i} />)}
+            </div>
+
+            {/* Charts Skeleton */}
+            <ChartSkeleton height={400} />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ChartSkeleton height={350} />
+              <ChartSkeleton height={350} />
+            </div>
           </div>
         ) : (
           <div className="space-y-8">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-6 shadow-xl">
+              <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-6 shadow-xl hover:scale-105 transition-transform duration-300">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-blue-500/20 rounded-xl">
                     <Clock className="w-8 h-8 text-blue-400" />
@@ -451,7 +635,7 @@ export const AdminReports = () => {
                 <p className="text-slate-400 text-sm mt-2">Across all projects</p>
               </div>
 
-              <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 shadow-xl">
+              <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-6 shadow-xl hover:scale-105 transition-transform duration-300">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-purple-500/20 rounded-xl">
                     <Calendar className="w-8 h-8 text-purple-400" />
@@ -463,7 +647,7 @@ export const AdminReports = () => {
                 <p className="text-slate-400 text-sm mt-2">Time entries logged</p>
               </div>
 
-              <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 backdrop-blur-sm border border-green-500/30 rounded-2xl p-6 shadow-xl">
+              <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 backdrop-blur-sm border border-green-500/30 rounded-2xl p-6 shadow-xl hover:scale-105 transition-transform duration-300">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-green-500/20 rounded-xl">
                     <Users className="w-8 h-8 text-green-400" />
@@ -475,7 +659,7 @@ export const AdminReports = () => {
                 <p className="text-slate-400 text-sm mt-2">With logged hours</p>
               </div>
 
-              <div className="bg-gradient-to-br from-orange-600/20 to-orange-800/20 backdrop-blur-sm border border-orange-500/30 rounded-2xl p-6 shadow-xl">
+              <div className="bg-gradient-to-br from-orange-600/20 to-orange-800/20 backdrop-blur-sm border border-orange-500/30 rounded-2xl p-6 shadow-xl hover:scale-105 transition-transform duration-300">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-orange-500/20 rounded-xl">
                     <BarChart3 className="w-8 h-8 text-orange-400" />
@@ -488,8 +672,7 @@ export const AdminReports = () => {
               </div>
             </div>
 
-            <div className="space-y-8">
-            {/* Hours Summary - Interactive Bar Chart */}
+            {/* Hours Summary Chart */}
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -498,31 +681,41 @@ export const AdminReports = () => {
                   </div>
                   <h2 className="text-2xl font-bold text-white">Hours Summary by Month</h2>
                 </div>
+                {refreshing && (
+                  <div className="flex items-center gap-2 text-blue-400">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-sm">Updating...</span>
+                  </div>
+                )}
               </div>
               {hoursSummary.length > 0 ? (
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={hoursSummary.map(item => ({
-                    month: item._id.month,
-                    hours: item.totalHours,
-                    entries: item.count
+                    month: item._id?.month || 'Unknown',
+                    hours: item.totalHours || 0,
+                    entries: item.count || 0
                   }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
                     <XAxis dataKey="month" stroke="#94a3b8" style={{ fontSize: '12px' }} />
                     <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ color: '#fff' }} />
-                    <Bar dataKey="hours" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="entries" fill="#10b981" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="hours" fill="#3b82f6" radius={[8, 8, 0, 0]} name="Hours" />
+                    <Bar dataKey="entries" fill="#10b981" radius={[8, 8, 0, 0]} name="Entries" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="bg-white/5 rounded-xl h-64 flex items-center justify-center border border-white/10">
-                  <p className="text-slate-300">No hours data available</p>
+                  <div className="text-center">
+                    <BarChart3 className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                    <p className="text-slate-300">No hours data available</p>
+                    <p className="text-slate-500 text-sm mt-1">Data will appear here when time entries are logged</p>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Client Activity - Interactive Charts */}
+            {/* Client Activity Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Pie Chart */}
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6">
@@ -533,6 +726,7 @@ export const AdminReports = () => {
                     </div>
                     <h2 className="text-2xl font-bold text-white">Client Distribution</h2>
                   </div>
+                  {refreshing && <Loader2 size={16} className="text-purple-400 animate-spin" />}
                 </div>
                 {clientActivity.length > 0 ? (
                   <ResponsiveContainer width="100%" height={350}>
@@ -540,7 +734,7 @@ export const AdminReports = () => {
                       <Pie
                         data={clientActivity.map(item => ({
                           name: item.clientName || 'Unassigned',
-                          value: item.totalHours
+                          value: item.totalHours || 0
                         }))}
                         cx="50%"
                         cy="50%"
@@ -558,7 +752,12 @@ export const AdminReports = () => {
                     </RechartsPie>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="text-center py-8 text-slate-300">No client activity data available</p>
+                  <div className="h-[350px] flex items-center justify-center">
+                    <div className="text-center">
+                      <PieChart className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                      <p className="text-slate-300">No client activity data</p>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -571,31 +770,38 @@ export const AdminReports = () => {
                     </div>
                     <h2 className="text-2xl font-bold text-white">Client Hours Breakdown</h2>
                   </div>
+                  {refreshing && <Loader2 size={16} className="text-green-400 animate-spin" />}
                 </div>
                 {clientActivity.length > 0 ? (
                   <ResponsiveContainer width="100%" height={350}>
                     <BarChart data={clientActivity.map(item => ({
                       client: item.clientName || 'Unassigned',
-                      hours: item.totalHours,
-                      entries: item.count,
-                      avg: (item.totalHours / item.count).toFixed(1)
+                      hours: item.totalHours || 0,
+                      entries: item.count || 0,
+                      avg: item.count ? ((item.totalHours || 0) / item.count).toFixed(1) : '0.0'
                     }))} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
                       <XAxis type="number" stroke="#94a3b8" style={{ fontSize: '12px' }} />
                       <YAxis dataKey="client" type="category" stroke="#94a3b8" style={{ fontSize: '12px' }} width={100} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="hours" fill="#3b82f6" radius={[0, 8, 8, 0]} />
+                      <Bar dataKey="hours" fill="#3b82f6" radius={[0, 8, 8, 0]} name="Hours" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="text-center py-8 text-slate-300">No client activity data available</p>
+                  <div className="h-[350px] flex items-center justify-center">
+                    <div className="text-center">
+                      <BarChart3 className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                      <p className="text-slate-300">No client hours data</p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
-          </div>
           </div>
         )}
       </div>
     </div>
   );
 };
+
+export default AdminReports;

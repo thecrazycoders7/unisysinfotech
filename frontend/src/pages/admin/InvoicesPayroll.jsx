@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { invoiceAPI } from '../../api/endpoints.js';
+import { invoiceAPI, clientAPI } from '../../api/endpoints.js';
 import { toast } from 'react-toastify';
-import { Search, Filter, Plus, Edit, Eye, Trash2, DollarSign, Clock, AlertCircle, X, Save } from 'lucide-react';
+import { Search, Filter, Plus, Edit, Eye, Trash2, DollarSign, Clock, AlertCircle, X, Save, ChevronDown } from 'lucide-react';
 
 export const InvoicesPayroll = () => {
   const [activeTab, setActiveTab] = useState('list');
@@ -12,6 +12,8 @@ export const InvoicesPayroll = () => {
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [showDeductions, setShowDeductions] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(false);
   
   // Filters
   const [filters, setFilters] = useState({
@@ -90,6 +92,28 @@ export const InvoicesPayroll = () => {
       setLoading(false);
     }
   };
+
+  const fetchClients = async () => {
+    setLoadingClients(true);
+    try {
+      const response = await clientAPI.getAll();
+      // Handle both response formats (clients array or direct array)
+      const clientsData = response.data.clients || response.data || [];
+      setClients(clientsData);
+    } catch (error) {
+      console.error('Failed to fetch clients:', error);
+      toast.error('Failed to load clients');
+    } finally {
+      setLoadingClients(false);
+    }
+  };
+
+  // Fetch clients when form opens
+  useEffect(() => {
+    if (showForm) {
+      fetchClients();
+    }
+  }, [showForm]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -374,9 +398,9 @@ export const InvoicesPayroll = () => {
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                                {invoice.name.charAt(0).toUpperCase()}
+                                {(invoice.name || 'U').charAt(0).toUpperCase()}
                               </div>
-                              <span className="text-white font-semibold">{invoice.name}</span>
+                              <span className="text-white font-semibold">{invoice.name || 'Unknown'}</span>
                             </div>
                           </td>
                           <td className="px-6 py-5 text-slate-300 font-medium">{invoice.payrollMonth}</td>
@@ -384,7 +408,7 @@ export const InvoicesPayroll = () => {
                             <span className="text-slate-200 font-mono text-sm bg-slate-700/30 px-3 py-1 rounded-lg">{invoice.invoiceNumber}</span>
                           </td>
                           <td className="px-6 py-5">
-                            <span className="text-emerald-400 font-bold text-lg">${invoice.invoiceAmount.toLocaleString()}</span>
+                            <span className="text-emerald-400 font-bold text-lg">${(invoice.invoiceAmount || 0).toLocaleString()}</span>
                           </td>
                           <td className="px-6 py-5">
                             <span className="text-slate-300 font-medium">{invoice.numberOfHours}</span>
@@ -450,7 +474,7 @@ export const InvoicesPayroll = () => {
                     <h3 className="text-2xl font-bold text-white">{person.name}</h3>
                     <div className="text-right">
                       <p className="text-sm text-slate-400">Total Pending</p>
-                      <p className="text-3xl font-bold text-red-400">${person.totalPending.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-red-400">${(person.totalPending || 0).toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -461,7 +485,7 @@ export const InvoicesPayroll = () => {
                           <p className="text-sm text-slate-400">{invoice.payrollMonth} • {invoice.clientName}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-white font-semibold">${invoice.invoiceAmount.toLocaleString()}</p>
+                          <p className="text-white font-semibold">${(invoice.invoiceAmount || 0).toLocaleString()}</p>
                           <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border mt-1 ${getStatusColor(invoice.status)}`}>
                             {invoice.status}
                           </span>
@@ -571,14 +595,32 @@ export const InvoicesPayroll = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Client Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.clientName}
-                      onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                      placeholder="e.g., NXP"
-                    />
+                    <div className="relative">
+                      <select
+                        required
+                        value={formData.clientName}
+                        onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                        disabled={loadingClients}
+                      >
+                        <option value="" className="bg-slate-800">
+                          {loadingClients ? 'Loading clients...' : 'Select a client'}
+                        </option>
+                        {clients.map((client) => (
+                          <option 
+                            key={client._id || client.id} 
+                            value={client.name}
+                            className="bg-slate-800"
+                          >
+                            {client.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                    </div>
+                    {clients.length === 0 && !loadingClients && (
+                      <p className="text-xs text-yellow-400 mt-1">No clients found. Add clients in Client Management first.</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">End Client</label>
@@ -620,13 +662,18 @@ export const InvoicesPayroll = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid gap-4 ${formData.status === 'Received' ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Status *</label>
                     <select
                       required
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        status: e.target.value,
+                        // Clear payment date if status is not "Received"
+                        paymentReceivedDate: e.target.value === 'Received' ? formData.paymentReceivedDate : ''
+                      })}
                       className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
                     >
                       <option value="Pending">Pending</option>
@@ -634,15 +681,18 @@ export const InvoicesPayroll = () => {
                       <option value="Waiting on Client">Waiting on Client</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Payment Received Date</label>
-                    <input
-                      type="date"
-                      value={formData.paymentReceivedDate}
-                      onChange={(e) => setFormData({ ...formData, paymentReceivedDate: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  {formData.status === 'Received' && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Payment Received Date *</label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.paymentReceivedDate}
+                        onChange={(e) => setFormData({ ...formData, paymentReceivedDate: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -702,7 +752,7 @@ export const InvoicesPayroll = () => {
               <div className="space-y-4 overflow-y-auto pr-2">
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                   <p className="text-sm text-slate-400">Invoice Amount</p>
-                  <p className="text-3xl font-bold text-white">${selectedInvoice.invoiceAmount.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-white">${(selectedInvoice?.invoiceAmount || 0).toLocaleString()}</p>
                 </div>
 
                 {selectedInvoice.employmentType === '1099' ? (
@@ -913,7 +963,7 @@ export const InvoicesPayroll = () => {
                   <p className="text-3xl font-bold text-green-400">${calculateNetPayable().toLocaleString()}</p>
                   {!deductions.isOverride && (
                     <p className="text-xs text-slate-500 mt-2">
-                      Calculated: ${selectedInvoice.invoiceAmount.toLocaleString()} - ${((deductions.amount1099 || 0) + (deductions.amountW2 || 0) + (deductions.unisysTax || 0) + (deductions.unisysCharges || 0) + (deductions.customDeduction1Amount || 0) + (deductions.customDeduction2Amount || 0) + (deductions.customDeduction3Amount || 0)).toLocaleString()}
+                      Calculated: ${(selectedInvoice?.invoiceAmount || 0).toLocaleString()} - ${((deductions.amount1099 || 0) + (deductions.amountW2 || 0) + (deductions.unisysTax || 0) + (deductions.unisysCharges || 0) + (deductions.customDeduction1Amount || 0) + (deductions.customDeduction2Amount || 0) + (deductions.customDeduction3Amount || 0)).toLocaleString()}
                     </p>
                   )}
                 </div>
