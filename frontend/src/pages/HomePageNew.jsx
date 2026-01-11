@@ -87,13 +87,35 @@ export const HomePageNew = () => {
     return () => clearInterval(interval);
   }, [words.length]);
 
-  // Fetch client logos
+  // Preload images for faster display
+  const preloadImages = (imageUrls) => {
+    imageUrls.forEach((url) => {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = url;
+      document.head.appendChild(link);
+      
+      // Also preload using Image API for better caching
+      const img = new Image();
+      img.src = url;
+    });
+  };
+
+  // Fetch client logos with image preloading
   useEffect(() => {
     const fetchLogos = async () => {
       try {
         setLogosLoading(true);
         const response = await clientLogosApi.getAll();
-        setClientLogos(response.data);
+        const logos = response.data || [];
+        setClientLogos(logos);
+        
+        // Preload all logo images immediately for instant display
+        if (logos.length > 0) {
+          const imageUrls = logos.map(logo => logo.logoUrl).filter(Boolean);
+          preloadImages(imageUrls);
+        }
       } catch (error) {
         if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
           console.warn('Backend server is not running. Client logos will not be displayed.');
@@ -123,18 +145,23 @@ export const HomePageNew = () => {
             className="font-bold mb-6 leading-[1.15]" 
             style={{ 
               fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif",
-              fontSize: 'clamp(1.75rem, 5vw + 0.5rem, 4rem)'
+              fontSize: 'clamp(2rem, 6vw + 0.5rem, 5rem)'
             }}
           >
             <span className="text-white animate-fade-in-up opacity-0 block" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
               Empowering Your Business with
             </span>
-            <span className="text-slate-400 animate-fade-in-up opacity-0 block mt-1" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
-              Real-time Solutions for{' '}
+            <span className="text-slate-400 animate-fade-in-up opacity-0 block mt-2" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
+              Real-time Solutions for
+            </span>
+            <span className="animate-fade-in-up opacity-0 block mt-2" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
               <span 
                 key={rotatingWord}
-                className="text-blue-400 inline-block animate-word-fade"
-                style={{ minWidth: 'clamp(80px, 15vw, 180px)' }}
+                className="text-blue-400 inline-block animate-word-fade font-bold"
+                style={{ 
+                  minWidth: 'clamp(100px, 18vw, 220px)',
+                  fontSize: 'clamp(2rem, 6vw + 0.5rem, 5rem)'
+                }}
               >
                 {words[rotatingWord]}
               </span>
@@ -144,7 +171,7 @@ export const HomePageNew = () => {
           {/* Subheading */}
           <p 
             className="text-slate-400 mb-10 max-w-3xl mx-auto leading-relaxed"
-            style={{ fontSize: 'clamp(0.95rem, 1.5vw + 0.3rem, 1.25rem)' }}
+            style={{ fontSize: 'clamp(1.1rem, 2vw + 0.4rem, 1.5rem)' }}
           >
             Empower your team with an all-in-one solution designed to streamline workflows, boost collaboration, and drive productivity.
           </p>
@@ -180,7 +207,7 @@ export const HomePageNew = () => {
           </div>
 
           {/* Client Logos Display */}
-          <div className="relative overflow-hidden">
+          <div className={`relative overflow-hidden ${clientLogos.length === 1 ? 'flex justify-center' : ''}`}>
             {logosLoading ? (
               /* Skeleton Loading for Client Logos */
               <div className="flex justify-center items-center gap-6 md:gap-10 flex-wrap py-4">
@@ -194,80 +221,58 @@ export const HomePageNew = () => {
                 ))}
               </div>
             ) : clientLogos.length > 0 ? (
-              <>
-                {/* Show scrolling animation only when there are 4+ logos */}
-                {clientLogos.length >= 4 ? (
+              <div className={clientLogos.length === 1 ? 'flex justify-center' : ''}>
+                {/* Gradient fade on edges for scrolling view - only show if more than 1 logo */}
+                {clientLogos.length > 1 && (
                   <>
-                    {/* Gradient fade on edges for scrolling view */}
                     <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0a1628] to-transparent z-10 pointer-events-none"></div>
                     <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0a1628] to-transparent z-10 pointer-events-none"></div>
-                    
-                    <div 
-                      className="flex animate-scroll-left hover:pause-animation"
-                      style={{ 
-                        width: 'max-content',
-                        animationDuration: `${Math.max(20, clientLogos.length * 5)}s`
-                      }}
-                    >
-                      {/* Multiple sets for seamless infinite scrolling */}
-                      {[...Array(3)].map((_, setIndex) => (
-                        <div key={`set-${setIndex}`} className="flex">
-                          {clientLogos.map((logo, logoIndex) => (
-                            <div 
-                              key={`${logo._id || logo.id}-set${setIndex}-${logoIndex}`} 
-                              className="flex-shrink-0 mx-6 md:mx-10 group"
-                            >
-                              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 md:p-6 transition-all duration-300 group-hover:bg-white/10 group-hover:border-blue-500/30 group-hover:scale-105">
-                                <img 
-                                  src={logo.logoUrl} 
-                                  alt={logo.name || 'Client Logo'}
-                                  loading="lazy"
-                                  className="h-16 md:h-20 w-auto max-w-[150px] md:max-w-[200px] object-contain filter brightness-90 group-hover:brightness-100 transition-all duration-300"
-                                  onError={(e) => {
-                                    e.target.style.display = 'none';
-                                  }}
-                                />
-                              </div>
-                              {logo.name && (
-                                <p className="text-slate-400 text-xs md:text-sm text-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                  {logo.name}
-                                </p>
-                              )}
-                            </div>
-                          ))}
+                  </>
+                )}
+                
+                <div 
+                  className="flex animate-scroll-left hover:pause-animation"
+                  style={{ 
+                    width: 'max-content',
+                    animationDuration: `${Math.max(10, clientLogos.length * 3)}s`
+                  }}
+                >
+                  {/* Two sets for seamless infinite circular scrolling - shows exact number of logos */}
+                  {[...Array(2)].map((_, setIndex) => (
+                    <div key={`set-${setIndex}`} className="flex">
+                      {clientLogos.map((logo, logoIndex) => (
+                        <div 
+                          key={`${logo._id || logo.id}-set${setIndex}-${logoIndex}`} 
+                          className="flex-shrink-0 mx-6 md:mx-10 group"
+                        >
+                          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 md:p-6 transition-all duration-300 group-hover:bg-white/10 group-hover:border-blue-500/30 group-hover:scale-105">
+                            <img 
+                              src={logo.logoUrl} 
+                              alt={logo.name || 'Client Logo'}
+                              loading="eager"
+                              fetchPriority="high"
+                              decoding="async"
+                              className="h-16 md:h-20 w-auto max-w-[150px] md:max-w-[200px] object-contain filter brightness-90 group-hover:brightness-100 transition-all duration-300"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                              onLoad={(e) => {
+                                e.target.style.opacity = '1';
+                              }}
+                              style={{ opacity: 0, transition: 'opacity 0.3s' }}
+                            />
+                          </div>
+                          {logo.name && (
+                            <p className="text-slate-400 text-xs md:text-sm text-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              {logo.name}
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>
-                  </>
-                ) : (
-                  /* Static display for fewer logos (1-3) - no scrolling, just centered */
-                  <div className="flex justify-center items-center gap-6 md:gap-10 flex-wrap py-4">
-                    {clientLogos.map((logo) => (
-                      <div 
-                        key={logo._id || logo.id} 
-                        className="group"
-                      >
-                        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 md:p-6 transition-all duration-300 group-hover:bg-white/10 group-hover:border-blue-500/30 group-hover:scale-105">
-                          <img 
-                            src={logo.logoUrl} 
-                            alt={logo.name || 'Client Logo'}
-                            loading="lazy"
-                            className="h-16 md:h-20 w-auto max-w-[150px] md:max-w-[200px] object-contain filter brightness-90 group-hover:brightness-100 transition-all duration-300"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                        {logo.name && (
-                          <p className="text-slate-400 text-xs md:text-sm text-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            {logo.name}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="text-center text-slate-400 py-8">
                 <p>Client logos coming soon...</p>
@@ -317,7 +322,9 @@ export const HomePageNew = () => {
                 <img 
                   src="/unysisinotechoffice.png" 
                   alt="UNISYS INFOTECH Office"
-                  loading="lazy"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>
