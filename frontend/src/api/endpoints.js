@@ -36,9 +36,10 @@ export const timeCardAPI = {
   getStats: (params) => api.get('/timecards/admin/stats', { params })
 };
 
-// Client APIs (Admin only)
+// Client APIs
 export const clientAPI = {
   getAll: (params) => api.get('/clients', { params }),
+  getActive: () => api.get('/clients/active'),
   getById: (id) => api.get(`/clients/${id}`),
   create: (data) => api.post('/clients', data),
   update: (id, data) => api.put(`/clients/${id}`, data),
@@ -59,7 +60,9 @@ export const reportsAPI = {
   getHoursSummary: (params) => api.get('/reports/hours-summary', { params }),
   getClientActivity: () => api.get('/reports/client-activity'),
   getWeeklySummary: () => api.get('/reports/my-weekly-summary'),
-  getMonthlySummary: (params) => api.get('/reports/my-monthly-summary', { params })
+  getMonthlySummary: (params) => api.get('/reports/my-monthly-summary', { params }),
+  getMonthlyEmployeeReport: (params) => api.get('/reports/monthly-employee-report', { params }),
+  getMonthlyEmployerReport: (params) => api.get('/reports/monthly-employer-report', { params })
 };
 
 // Client Logos APIs

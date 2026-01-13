@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore, useAuthStore } from '../../store/index.js';
-import { timeCardAPI } from '../../api/endpoints.js';
+import { timeCardAPI, clientAPI } from '../../api/endpoints.js';
 import { toast } from 'react-toastify';
-import { Calendar, Clock, Save, Trash2, ChevronLeft, ChevronRight, ArrowLeft, LogOut, Home, Lock } from 'lucide-react';
+import { Calendar, Clock, Save, Trash2, ChevronLeft, ChevronRight, ArrowLeft, LogOut, Home } from 'lucide-react';
+import { formatUSDate } from '../../utils/dateUtils.js';
 
 /**
  * Employee TimeCard Page
@@ -26,11 +27,24 @@ export const EmployeeTimeCards = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [selectedClientId, setSelectedClientId] = useState('');
 
-  // Fetch time entries for current month
+  // Fetch clients and time entries for current month
   useEffect(() => {
+    fetchClients();
     fetchTimeCards();
   }, [currentDate]);
+
+  const fetchClients = async () => {
+    try {
+      const response = await clientAPI.getActive();
+      setClients(response.data.clients || []);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      toast.error('Failed to fetch clients');
+    }
+  };
 
   const fetchTimeCards = async () => {
     try {
@@ -43,7 +57,13 @@ export const EmployeeTimeCards = () => {
       });
       
       console.log('Fetched timecards:', response.data.timeCards);
-      const cards = response.data.timeCards || [];
+      const cards = (response.data.timeCards || []).map(tc => ({
+        ...tc,
+        _id: tc._id || tc.id,
+        id: tc.id || tc._id,
+        hoursWorked: tc.hoursWorked !== undefined ? tc.hoursWorked : (tc.hours_worked || 0),
+        isLocked: tc.isLocked !== undefined ? tc.isLocked : (tc.is_locked || false)
+      }));
       setTimeCards(cards);
       
       // Calculate and log totals
@@ -59,6 +79,11 @@ export const EmployeeTimeCards = () => {
     e.preventDefault();
     if (!selectedDate || !hoursWorked) {
       toast.error('Please enter hours worked');
+      return;
+    }
+
+    if (!selectedClientId) {
+      toast.error('Please select a client');
       return;
     }
 
@@ -79,25 +104,79 @@ export const EmployeeTimeCards = () => {
       const payload = {
         date: formattedDate,
         hoursWorked: hours,
+        clientId: selectedClientId,
         notes: '' // Backend expects notes field even if empty
       };
       
-      console.log('Submitting hours:', payload);
+      console.log('Submitting hours payload:', payload);
       const response = await timeCardAPI.submitHours(payload);
-      console.log('Response:', response);
+      console.log('Submit hours response:', response);
       
+      // Check if response indicates success
+      if (response?.data?.success === false) {
+        const errorMsg = response.data.message || response.data.error || 'Failed to submit hours';
+        console.error('Backend returned success: false', response.data);
+        throw new Error(errorMsg);
+      }
+      
+      // Success case
       toast.success(editingEntryId ? 'Hours updated successfully!' : 'Hours submitted successfully!');
       setShowModal(false);
       setHoursWorked('');
+      setSelectedClientId('');
       setEditingEntryId(null);
       await fetchTimeCards(); // Wait for data refresh to complete
     } catch (error) {
       console.error('Submit hours error:', error);
-      const errorMsg = error.response?.data?.message || 
-                       error.response?.data?.errors?.[0]?.msg ||
-                       error.message ||
-                       'Failed to submit hours';
-      toast.error(errorMsg);
+      console.error('Error response:', error.response);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        toast.error('Cannot connect to server. Please check if the backend is running on port 5001.');
+      } else if (error.response?.status === 401) {
+        toast.error('Session expired. Please log in again.');
+        // Handle logout if needed
+      } else if (error.response?.status === 400) {
+        // Validation errors or bad request
+        const errorData = error.response?.data;
+        let errorMsg = errorData?.message || errorData?.error || error.message || 'Failed to submit hours';
+        
+        // Handle validation errors array
+        if (errorData?.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+          errorMsg = errorData.errors.map(e => e.msg || e.message).join(', ');
+        }
+        
+        toast.error(errorMsg);
+      } else if (error.response?.status === 403) {
+        // Forbidden (e.g., locked entry)
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Operation not allowed';
+        toast.error(errorMsg);
+      } else if (error.response?.status === 404) {
+        // Not found (e.g., user, client not found)
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Resource not found';
+        toast.error(errorMsg);
+      } else if (error.response?.status === 409) {
+        // Conflict (e.g., duplicate entry)
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Entry already exists';
+        toast.error(errorMsg);
+      } else if (error.response?.status === 503) {
+        // Service unavailable (database connection)
+        const errorMsg = error.response?.data?.message || 'Service temporarily unavailable. Please try again later.';
+        toast.error(errorMsg);
+      } else {
+        // Generic error - try to extract detailed message
+        const errorData = error.response?.data;
+        const errorMsg = errorData?.message || 
+                         errorData?.error ||
+                         error.message ||
+                         'Failed to submit hours';
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -137,11 +216,13 @@ export const EmployeeTimeCards = () => {
         toast.warning('This entry is locked and cannot be edited');
         return;
       }
-      setEditingEntryId(existing._id);
-      setHoursWorked(existing.hoursWorked.toString());
+      setEditingEntryId(existing._id || existing.id);
+      setHoursWorked((existing.hoursWorked || existing.hours_worked || 0).toString());
+      setSelectedClientId(existing.clientId?._id || existing.clientId || existing.client_id || '');
     } else {
       setEditingEntryId(null);
       setHoursWorked('');
+      setSelectedClientId('');
     }
     
     setShowModal(true);
@@ -206,14 +287,6 @@ export const EmployeeTimeCards = () => {
               >
                 <Home size={18} />
                 <span className="font-medium">Home</span>
-              </button>
-              <button
-                onClick={() => navigate('/employee/change-password')}
-                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 rounded-lg transition-colors border border-purple-500/30 text-sm"
-              >
-                <Lock size={18} />
-                <span className="font-medium hidden sm:inline">Change Password</span>
-                <span className="font-medium sm:hidden">Password</span>
               </button>
             </div>
             <div className="flex items-center justify-between sm:justify-end gap-4">
@@ -284,7 +357,7 @@ export const EmployeeTimeCards = () => {
                     ${!date ? 'invisible' : ''}
                     ${isToday ? 'ring-1 ring-blue-500' : ''}
                     ${entry ? 'bg-blue-600/30 hover:bg-blue-600/40 border border-blue-500/50' : 'bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/30'}
-                    ${entry?.isLocked ? 'opacity-60 cursor-not-allowed' : ''}
+                    ${(entry?.isLocked || entry?.is_locked) ? 'opacity-60 cursor-not-allowed' : ''}
                   `}
                 >
                   {date && (
@@ -294,10 +367,10 @@ export const EmployeeTimeCards = () => {
                       </div>
                       {entry && (
                         <div className="text-[9px] font-bold text-blue-400">
-                          {entry.hoursWorked}h
+                          {(entry.hoursWorked || entry.hours_worked || 0)}h
                         </div>
                       )}
-                      {entry?.isLocked && (
+                      {(entry?.isLocked || entry?.is_locked) && (
                         <div className="absolute top-0 right-0 text-[8px]">
                           🔒
                         </div>
@@ -343,10 +416,30 @@ export const EmployeeTimeCards = () => {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#1a2942] border border-blue-900/50 rounded-xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-xl font-bold mb-4 text-white">
-              {editingEntryId ? 'Edit Hours' : 'Log Hours'} - {selectedDate.toLocaleDateString()}
+              {editingEntryId ? 'Edit Hours' : 'Log Hours'} - {formatUSDate(selectedDate)}
             </h3>
             
             <form onSubmit={handleSubmitHours} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-white">
+                  Client *
+                </label>
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => setSelectedClientId(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-blue-900/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  required
+                  autoFocus
+                >
+                  <option value="" className="bg-slate-800">Select a client</option>
+                  {clients.map((client) => (
+                    <option key={client._id || client.id} value={client._id || client.id} className="bg-slate-800">
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2 text-white">
                   Hours Worked *
@@ -361,7 +454,6 @@ export const EmployeeTimeCards = () => {
                   className="w-full px-4 py-3 rounded-lg border bg-slate-800 border-blue-900/50 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-lg"
                   placeholder="8.0"
                   required
-                  autoFocus
                 />
               </div>
               
@@ -393,6 +485,7 @@ export const EmployeeTimeCards = () => {
                     setShowModal(false);
                     setEditingEntryId(null);
                     setHoursWorked('');
+                    setSelectedClientId('');
                   }}
                   className="px-6 py-3 rounded-lg font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
                 >

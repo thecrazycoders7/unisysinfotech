@@ -5,6 +5,37 @@ import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
+// Get active clients for dropdown (employees and employers)
+router.get('/active', protect, authorize('employee', 'employer', 'admin'), async (req, res) => {
+  try {
+    const { data: clients, error } = await supabase
+      .from('clients')
+      .select('id, name, email')
+      .eq('status', 'active')
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching active clients:', error);
+      return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+
+    const transformedClients = (clients || []).map(client => ({
+      _id: client.id,
+      id: client.id,
+      name: client.name,
+      email: client.email
+    }));
+
+    res.status(200).json({
+      success: true,
+      clients: transformedClients
+    });
+  } catch (error) {
+    console.error('Error fetching active clients:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get all clients (admin only)
 router.get('/', protect, authorize('admin'), async (req, res) => {
   try {
