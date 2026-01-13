@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useThemeStore, useAuthStore } from '../../store/index.js';
 import { timeCardAPI } from '../../api/endpoints.js';
 import { toast } from 'react-toastify';
-import { Calendar, Clock, Save, Trash2, ChevronLeft, ChevronRight, ArrowLeft, LogOut, Home } from 'lucide-react';
+import { Calendar, Clock, Save, Trash2, ChevronLeft, ChevronRight, ArrowLeft, LogOut, Home, Lock } from 'lucide-react';
 
 /**
  * Employee TimeCard Page
@@ -43,13 +43,7 @@ export const EmployeeTimeCards = () => {
       });
       
       console.log('Fetched timecards:', response.data.timeCards);
-      const cards = (response.data.timeCards || []).map(tc => ({
-        ...tc,
-        _id: tc._id || tc.id,
-        id: tc.id || tc._id,
-        hoursWorked: tc.hoursWorked !== undefined ? tc.hoursWorked : (tc.hours_worked || 0),
-        isLocked: tc.isLocked !== undefined ? tc.isLocked : (tc.is_locked || false)
-      }));
+      const cards = response.data.timeCards || [];
       setTimeCards(cards);
       
       // Calculate and log totals
@@ -143,8 +137,8 @@ export const EmployeeTimeCards = () => {
         toast.warning('This entry is locked and cannot be edited');
         return;
       }
-      setEditingEntryId(existing._id || existing.id);
-      setHoursWorked((existing.hoursWorked || existing.hours_worked || 0).toString());
+      setEditingEntryId(existing._id);
+      setHoursWorked(existing.hoursWorked.toString());
     } else {
       setEditingEntryId(null);
       setHoursWorked('');
@@ -212,6 +206,14 @@ export const EmployeeTimeCards = () => {
               >
                 <Home size={18} />
                 <span className="font-medium">Home</span>
+              </button>
+              <button
+                onClick={() => navigate('/employee/change-password')}
+                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 rounded-lg transition-colors border border-purple-500/30 text-sm"
+              >
+                <Lock size={18} />
+                <span className="font-medium hidden sm:inline">Change Password</span>
+                <span className="font-medium sm:hidden">Password</span>
               </button>
             </div>
             <div className="flex items-center justify-between sm:justify-end gap-4">
@@ -282,7 +284,7 @@ export const EmployeeTimeCards = () => {
                     ${!date ? 'invisible' : ''}
                     ${isToday ? 'ring-1 ring-blue-500' : ''}
                     ${entry ? 'bg-blue-600/30 hover:bg-blue-600/40 border border-blue-500/50' : 'bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600/30'}
-                    ${(entry?.isLocked || entry?.is_locked) ? 'opacity-60 cursor-not-allowed' : ''}
+                    ${entry?.isLocked ? 'opacity-60 cursor-not-allowed' : ''}
                   `}
                 >
                   {date && (
@@ -292,10 +294,10 @@ export const EmployeeTimeCards = () => {
                       </div>
                       {entry && (
                         <div className="text-[9px] font-bold text-blue-400">
-                          {(entry.hoursWorked || entry.hours_worked || 0)}h
+                          {entry.hoursWorked}h
                         </div>
                       )}
-                      {(entry?.isLocked || entry?.is_locked) && (
+                      {entry?.isLocked && (
                         <div className="absolute top-0 right-0 text-[8px]">
                           🔒
                         </div>

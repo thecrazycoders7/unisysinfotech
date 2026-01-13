@@ -4,63 +4,6 @@ import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
-// Transform job from DB to frontend format
-const transformJob = (job) => ({
-  _id: job.id,
-  id: job.id,
-  jobCode: job.job_code,
-  title: job.title,
-  department: job.department,
-  location: job.location,
-  type: job.type,
-  description: job.description,
-  responsibilities: job.responsibilities || [],
-  expectedSkills: job.expected_skills || [],
-  qualifications: job.qualifications || [],
-  technicalStack: job.technical_stack || [],
-  skills: job.skills || [],
-  yearsOfExperience: job.years_of_experience,
-  experience: job.experience,
-  salary: job.salary,
-  additionalInfo: job.additional_info,
-  predictedFeedback: job.predicted_feedback,
-  isActive: job.is_active,
-  displayOrder: job.display_order || 0,
-  postedDate: job.posted_date,
-  endDate: job.end_date,
-  createdAt: job.created_at,
-  updatedAt: job.updated_at
-});
-
-// Transform application from DB to frontend format
-const transformApplication = (app) => ({
-  _id: app.id,
-  id: app.id,
-  jobId: app.job_id,
-  fullName: app.full_name,
-  email: app.email,
-  phone: app.phone,
-  currentLocation: app.current_location,
-  experience: app.experience,
-  currentCompany: app.current_company,
-  currentRole: app.current_role_name,
-  noticePeriod: app.notice_period,
-  expectedSalary: app.expected_salary,
-  resumeUrl: app.resume_url,
-  coverLetter: app.cover_letter,
-  linkedinUrl: app.linkedin_url,
-  portfolioUrl: app.portfolio_url,
-  status: app.status,
-  notes: app.notes,
-  appliedDate: app.applied_date,
-  createdAt: app.created_at,
-  updatedAt: app.updated_at,
-  // Include job info if joined
-  jobTitle: app.job_postings?.title,
-  jobDepartment: app.job_postings?.department,
-  jobLocation: app.job_postings?.location
-});
-
 // Public routes
 // Get all active job postings
 router.get('/', async (req, res) => {
@@ -81,12 +24,10 @@ router.get('/', async (req, res) => {
       });
     }
     
-    const transformedJobs = (jobs || []).map(transformJob);
-    
     res.json({
       success: true,
-      count: transformedJobs.length,
-      data: transformedJobs
+      count: (jobs || []).length,
+      data: jobs || []
     });
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -116,7 +57,7 @@ router.get('/:id', async (req, res) => {
 
     res.json({
       success: true,
-      data: transformJob(job)
+      data: job
     });
   } catch (error) {
     console.error('Error fetching job:', error);
@@ -128,13 +69,12 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Submit job application (PUBLIC - no auth required)
+// Submit job application
 router.post('/:id/apply', async (req, res) => {
   try {
-    // Check if job exists and is active
     const { data: job } = await supabase
       .from('job_postings')
-      .select('is_active, title')
+      .select('is_active')
       .eq('id', req.params.id)
       .single();
     
@@ -152,22 +92,6 @@ router.post('/:id/apply', async (req, res) => {
       });
     }
 
-    // Check for duplicate application (same email + same job)
-    const { data: existingApp } = await supabase
-      .from('job_applications')
-      .select('id')
-      .eq('job_id', req.params.id)
-      .eq('email', req.body.email?.toLowerCase().trim())
-      .maybeSingle();
-
-    if (existingApp) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already applied for this position'
-      });
-    }
-
-    // Create application
     const { data: application, error } = await supabase
       .from('job_applications')
       .insert({
@@ -201,8 +125,8 @@ router.post('/:id/apply', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Application submitted successfully for ${job.title}`,
-      data: transformApplication(application)
+      message: 'Application submitted successfully',
+      data: application
     });
   } catch (error) {
     console.error('Error submitting application:', error);
@@ -233,12 +157,10 @@ router.get('/admin/all', protect, authorize('admin'), async (req, res) => {
       });
     }
     
-    const transformedJobs = (jobs || []).map(transformJob);
-    
     res.json({
       success: true,
-      count: transformedJobs.length,
-      data: transformedJobs
+      count: (jobs || []).length,
+      data: jobs || []
     });
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -270,11 +192,11 @@ router.post('/admin/create', protect, authorize('admin'), async (req, res) => {
         experience: req.body.experience || '',
         salary: req.body.salary || '',
         additional_info: req.body.additionalInfo || req.body.additional_info || '',
-        predicted_feedback: req.body.predictedFeedback || req.body.predicted_feedback || '',
         is_active: req.body.isActive !== undefined ? req.body.isActive : true,
         display_order: req.body.displayOrder || req.body.display_order || 0,
         posted_date: req.body.postedDate || req.body.posted_date || new Date().toISOString().split('T')[0],
-        end_date: req.body.endDate || req.body.end_date || null
+        end_date: req.body.endDate || req.body.end_date || null,
+        predicted_feedback: req.body.predictedFeedback || req.body.predicted_feedback || ''
       })
       .select()
       .single();
@@ -291,7 +213,7 @@ router.post('/admin/create', protect, authorize('admin'), async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Job posting created successfully',
-      data: transformJob(job)
+      data: job
     });
   } catch (error) {
     console.error('Error creating job:', error);
@@ -307,8 +229,6 @@ router.post('/admin/create', protect, authorize('admin'), async (req, res) => {
 router.put('/admin/:id', protect, authorize('admin'), async (req, res) => {
   try {
     const updateData = {};
-    
-    // Map camelCase to snake_case
     if (req.body.title !== undefined) updateData.title = req.body.title;
     if (req.body.department !== undefined) updateData.department = req.body.department;
     if (req.body.location !== undefined) updateData.location = req.body.location;
@@ -323,11 +243,11 @@ router.put('/admin/:id', protect, authorize('admin'), async (req, res) => {
     if (req.body.experience !== undefined) updateData.experience = req.body.experience;
     if (req.body.salary !== undefined) updateData.salary = req.body.salary;
     if (req.body.additionalInfo !== undefined) updateData.additional_info = req.body.additionalInfo;
-    if (req.body.predictedFeedback !== undefined) updateData.predicted_feedback = req.body.predictedFeedback;
     if (req.body.isActive !== undefined) updateData.is_active = req.body.isActive;
     if (req.body.displayOrder !== undefined) updateData.display_order = req.body.displayOrder;
     if (req.body.postedDate !== undefined) updateData.posted_date = req.body.postedDate;
     if (req.body.endDate !== undefined) updateData.end_date = req.body.endDate;
+    if (req.body.predictedFeedback !== undefined) updateData.predicted_feedback = req.body.predictedFeedback;
 
     const { data: job, error } = await supabase
       .from('job_postings')
@@ -346,7 +266,7 @@ router.put('/admin/:id', protect, authorize('admin'), async (req, res) => {
     res.json({
       success: true,
       message: 'Job posting updated successfully',
-      data: transformJob(job)
+      data: job
     });
   } catch (error) {
     console.error('Error updating job:', error);
@@ -358,16 +278,9 @@ router.put('/admin/:id', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-// Delete job posting (will also cascade delete applications if FK is set)
+// Delete job posting
 router.delete('/admin/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    // First delete all applications for this job
-    await supabase
-      .from('job_applications')
-      .delete()
-      .eq('job_id', req.params.id);
-
-    // Then delete the job
     const { data: job, error } = await supabase
       .from('job_postings')
       .delete()
@@ -396,12 +309,12 @@ router.delete('/admin/:id', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-// Get all applications for a specific job
+// Get all applications for a job
 router.get('/admin/:id/applications', protect, authorize('admin'), async (req, res) => {
   try {
     const { data: applications, error } = await supabase
       .from('job_applications')
-      .select('*, job_postings(title, department, location)')
+      .select('*, job_postings(title, department)')
       .eq('job_id', req.params.id)
       .order('applied_date', { ascending: false });
     
@@ -414,12 +327,10 @@ router.get('/admin/:id/applications', protect, authorize('admin'), async (req, r
       });
     }
     
-    const transformedApps = (applications || []).map(transformApplication);
-    
     res.json({
       success: true,
-      count: transformedApps.length,
-      data: transformedApps
+      count: (applications || []).length,
+      data: applications || []
     });
   } catch (error) {
     console.error('Error fetching applications:', error);
@@ -448,12 +359,10 @@ router.get('/admin/applications/all', protect, authorize('admin'), async (req, r
       });
     }
     
-    const transformedApps = (applications || []).map(transformApplication);
-    
     res.json({
       success: true,
-      count: transformedApps.length,
-      data: transformedApps
+      count: (applications || []).length,
+      data: applications || []
     });
   } catch (error) {
     console.error('Error fetching applications:', error);
@@ -468,14 +377,11 @@ router.get('/admin/applications/all', protect, authorize('admin'), async (req, r
 // Update application status
 router.put('/admin/applications/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const updateData = { status: req.body.status };
-    if (req.body.notes !== undefined) updateData.notes = req.body.notes;
-
     const { data: application, error } = await supabase
       .from('job_applications')
-      .update(updateData)
+      .update({ status: req.body.status })
       .eq('id', req.params.id)
-      .select('*, job_postings(title, department, location)')
+      .select('*, job_postings(title, department)')
       .single();
 
     if (error || !application) {
@@ -488,42 +394,13 @@ router.put('/admin/applications/:id', protect, authorize('admin'), async (req, r
     res.json({
       success: true,
       message: 'Application status updated successfully',
-      data: transformApplication(application)
+      data: application
     });
   } catch (error) {
     console.error('Error updating application:', error);
     res.status(400).json({
       success: false,
       message: 'Error updating application',
-      error: error.message
-    });
-  }
-});
-
-// Delete application
-router.delete('/admin/applications/:id', protect, authorize('admin'), async (req, res) => {
-  try {
-    const { error } = await supabase
-      .from('job_applications')
-      .delete()
-      .eq('id', req.params.id);
-
-    if (error) {
-      return res.status(404).json({
-        success: false,
-        message: 'Application not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Application deleted successfully'
-    });
-  } catch (error) {
-    console.error('Error deleting application:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting application',
       error: error.message
     });
   }

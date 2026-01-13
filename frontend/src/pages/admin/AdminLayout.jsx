@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/index.js';
 import { useAuthStore } from '../../store/index.js';
-import { LayoutDashboard, Users, BarChart3, LogOut, Image, Briefcase, UserCog, ArrowLeft, Mail, Receipt, Lock, Shield, Menu, X, Clock, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, LogOut, Image, Briefcase, UserCog, ArrowLeft, Mail, Receipt, Lock, Shield, Menu, X } from 'lucide-react';
 
 const AdminLayout = () => {
   const isDark = useThemeStore((state) => state.isDark);
@@ -116,19 +116,6 @@ const AdminLayout = () => {
           </Link>
 
           <Link
-            to="/admin/timecards"
-            onClick={closeSidebar}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              isActive('/admin/timecards')
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:bg-white/10'
-            }`}
-          >
-            <Clock size={20} />
-            <span className="text-sm lg:text-base">Timecards</span>
-          </Link>
-
-          <Link
             to="/admin/client-logos"
             onClick={closeSidebar}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
@@ -145,26 +132,13 @@ const AdminLayout = () => {
             to="/admin/jobs"
             onClick={closeSidebar}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              isActive('/admin/jobs') && !isActive('/admin/job-applications')
+              isActive('/admin/jobs')
                 ? 'bg-blue-600 text-white'
                 : 'text-slate-300 hover:bg-white/10'
             }`}
           >
             <Briefcase size={20} />
             <span className="text-sm lg:text-base">Jobs</span>
-          </Link>
-
-          <Link
-            to="/admin/job-applications"
-            onClick={closeSidebar}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              isActive('/admin/job-applications')
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:bg-white/10'
-            }`}
-          >
-            <FileText size={20} />
-            <span className="text-sm lg:text-base">Job Applications</span>
           </Link>
 
           <Link

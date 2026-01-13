@@ -45,8 +45,6 @@ import { CookiePolicy } from './pages/CookiePolicy.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
 import { RoleLoginPage } from './pages/RoleLoginPage.jsx';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage.jsx';
-import { ResetPasswordPage } from './pages/ResetPasswordPage.jsx';
 
 // Admin Portal
 import AdminLayout from './pages/admin/AdminLayout.jsx';
@@ -55,12 +53,10 @@ import { ClientManagement } from './pages/admin/ClientManagement.jsx';
 import { AdminReports } from './pages/admin/AdminReports.jsx';
 import ClientLogoManagement from './pages/admin/ClientLogoManagement.jsx';
 import { JobManagement } from './pages/admin/JobManagement.jsx';
-import { JobApplications } from './pages/admin/JobApplications.jsx';
 import { AdminUserManagement } from './pages/admin/AdminUserManagement.jsx';
 import { ContactMessages } from './pages/admin/ContactMessages.jsx';
 import { InvoicesPayroll } from './pages/admin/InvoicesPayroll.jsx';
 import { PasswordChangeApproval } from './pages/admin/PasswordChangeApproval.jsx';
-import { TimecardsManagement } from './pages/admin/TimecardsManagement.jsx';
 
 // Common Pages
 import { ChangePassword } from './pages/common/ChangePassword.jsx';
@@ -108,9 +104,6 @@ function App() {
           {/* Auth Routes - Role-based Login */}
           <Route path="/login/:role" element={<RoleLoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          {/* Reset password - Supabase Auth sends token in URL hash */}
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Admin Portal */}
           <Route
@@ -126,11 +119,9 @@ function App() {
             <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/client-logos" element={<ClientLogoManagement />} />
             <Route path="/admin/jobs" element={<JobManagement />} />
-            <Route path="/admin/job-applications" element={<JobApplications />} />
             <Route path="/admin/contact-messages" element={<ContactMessages />} />
             <Route path="/admin/invoices" element={<InvoicesPayroll />} />
             <Route path="/admin/password-requests" element={<PasswordChangeApproval />} />
-            <Route path="/admin/timecards" element={<TimecardsManagement />} />
             <Route path="/admin/change-password" element={<ChangePassword />} />
           </Route>
 

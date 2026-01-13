@@ -111,3 +111,6 @@ All 12 tables have been successfully created:
 - **Database Tables:** https://supabase.com/dashboard/project/kwqabttdbdslmjzbcppo/editor
 
 
+
+
+

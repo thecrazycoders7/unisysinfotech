@@ -373,16 +373,8 @@ export const HomePage = () => {
           </div>
 
           {logosLoading ? (
-            /* Skeleton Loading for Client Logos */
-            <div className="flex justify-center items-center gap-6 md:gap-10 flex-wrap py-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={`skeleton-${i}`} className="animate-pulse">
-                  <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-xl p-4 md:p-6`}>
-                    <div className={`h-16 md:h-20 w-[120px] md:w-[160px] ${isDark ? 'bg-slate-700' : 'bg-slate-200'} rounded-lg`}></div>
-                  </div>
-                  <div className={`h-3 w-20 ${isDark ? 'bg-slate-700' : 'bg-slate-200'} rounded mx-auto mt-2`}></div>
-                </div>
-              ))}
+            <div className={`text-center py-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p>Loading client logos...</p>
             </div>
           ) : logosError ? (
             <div className={`text-center py-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>

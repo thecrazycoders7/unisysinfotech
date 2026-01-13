@@ -46,38 +46,18 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       return res.status(500).json({ message: 'Server error', error: error.message });
     }
 
-    const transformedClients = (clients || []).map(transformClient);
-
     res.status(200).json({
       success: true,
-      count: transformedClients.length,
+      count: (clients || []).length,
       total: count || 0,
       pages: Math.ceil((count || 0) / limitNum),
       currentPage: pageNum,
-      clients: transformedClients
+      clients: clients || []
     });
   } catch (error) {
     console.error('Error fetching clients:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
-});
-
-// Transform helper function
-const transformClient = (client) => ({
-  _id: client.id,
-  id: client.id,
-  name: client.name,
-  email: client.email,
-  industry: client.industry,
-  contactPerson: client.contact_person,
-  phone: client.phone,
-  address: client.address,
-  technology: client.technology,
-  onboardingDate: client.onboarding_date,
-  offboardingDate: client.offboarding_date,
-  status: client.status,
-  createdAt: client.created_at,
-  updatedAt: client.updated_at
 });
 
 // Get single client (admin only)
@@ -95,7 +75,7 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
     
     res.status(200).json({
       success: true,
-      client: transformClient(client)
+      client
     });
   } catch (error) {
     console.error('Error fetching client:', error);
@@ -160,7 +140,7 @@ router.post('/', protect, authorize('admin'), [
     res.status(201).json({
       success: true,
       message: 'Client created successfully',
-      client: transformClient(client)
+      client
     });
   } catch (error) {
     console.error('Error creating client:', error);
@@ -241,7 +221,7 @@ router.put('/:id', protect, authorize('admin'), [
     res.status(200).json({
       success: true,
       message: 'Client updated successfully',
-      client: transformClient(client)
+      client
     });
   } catch (error) {
     console.error('Error updating client:', error);

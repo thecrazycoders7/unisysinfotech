@@ -205,18 +205,6 @@
   }
 }
 
-@keyframes shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  10%, 30%, 50%, 70%, 90% {
-    transform: translateX(-5px);
-  }
-  20%, 40%, 60%, 80% {
-    transform: translateX(5px);
-  }
-}
-
 @layer components {
   /* Animation utility classes */
   .animate-fade-in {
@@ -272,17 +260,8 @@
     animation: wordFade 2s ease-in-out;
   }
 
-  .animate-shake {
-    animation: shake 0.5s ease-in-out;
-  }
-
   .animate-scroll-left {
     animation: scrollLeft 30s linear infinite;
-  }
-
-  .animate-scroll-left:hover,
-  .hover\:pause-animation:hover {
-    animation-play-state: paused;
   }
 
   .animate-rotate-circular {
@@ -368,30 +347,4 @@ body {
 body.dark {
   background-color: #1A1A2E;
   color: #F8FAFC;
-}
-
-/* Global Select and Option Styling for Dark Theme */
-select {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
-}
-
-select option {
-  background-color: #1e293b !important; /* slate-800 */
-  color: white !important;
-  padding: 0.5rem;
-}
-
-select:focus option:checked {
-  background-color: #3b82f6 !important; /* blue-500 */
-  color: white !important;
-}
-
-select option:hover {
-  background-color: #475569 !important; /* slate-600 */
-}
-
-select option:checked {
-  background-color: #3b82f6 !important; /* blue-500 */
-  color: white !important;
 }

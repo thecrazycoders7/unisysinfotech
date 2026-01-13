@@ -68,27 +68,13 @@ router.post('/', protect, authorize('employee', 'employer'), [
         .select()
         .single();
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Transform to camelCase
-    const transformedTimeCard = {
-      _id: timeCard.id,
-      id: timeCard.id,
-      employeeId: timeCard.employee_id,
-      employerId: timeCard.employer_id,
-      date: timeCard.date,
-      hoursWorked: parseFloat(timeCard.hours_worked || 0),
-      notes: timeCard.notes || '',
-      isLocked: timeCard.is_locked || false,
-      createdAt: timeCard.created_at,
-      updatedAt: timeCard.updated_at
-    };
-
-    return res.status(200).json({
-      success: true,
-      message: 'Time entry updated successfully',
-      timeCard: transformedTimeCard
-    });
+      return res.status(200).json({
+        success: true,
+        message: 'Time entry updated successfully',
+        timeCard
+      });
     }
 
     // Create new entry
@@ -108,24 +94,10 @@ router.post('/', protect, authorize('employee', 'employer'), [
 
     if (error) throw error;
 
-    // Transform to camelCase
-    const transformedTimeCard = {
-      _id: timeCard.id,
-      id: timeCard.id,
-      employeeId: timeCard.employee_id,
-      employerId: timeCard.employer_id,
-      date: timeCard.date,
-      hoursWorked: parseFloat(timeCard.hours_worked || 0),
-      notes: timeCard.notes || '',
-      isLocked: timeCard.is_locked || false,
-      createdAt: timeCard.created_at,
-      updatedAt: timeCard.updated_at
-    };
-
     res.status(201).json({
       success: true,
       message: 'Time entry created successfully',
-      timeCard: transformedTimeCard
+      timeCard
     });
   } catch (error) {
     console.error('Error creating/updating timecard:', error);
@@ -160,24 +132,10 @@ router.get('/my-entries', protect, authorize('employee', 'employer'), async (req
 
     if (error) throw error;
 
-    // Transform to camelCase to match frontend expectations
-    const transformedTimeCards = (timeCards || []).map(card => ({
-      _id: card.id,
-      id: card.id,
-      employeeId: card.employee_id,
-      employerId: card.employer_id,
-      date: card.date,
-      hoursWorked: parseFloat(card.hours_worked || 0),
-      notes: card.notes || '',
-      isLocked: card.is_locked || false,
-      createdAt: card.created_at,
-      updatedAt: card.updated_at
-    }));
-
     res.status(200).json({
       success: true,
-      count: transformedTimeCards.length,
-      timeCards: transformedTimeCards
+      count: (timeCards || []).length,
+      timeCards: timeCards || []
     });
   } catch (error) {
     console.error('Error fetching timecards:', error);
@@ -259,39 +217,18 @@ router.get('/employer/entries', protect, authorize('employer'), async (req, res)
 
     if (error) throw error;
 
-    // Fetch employee info separately and transform to camelCase
+    // Fetch employee info separately
     const timeCardsWithEmployees = await Promise.all(
       (timeCards || []).map(async (card) => {
-        let employee = null;
         if (card.employee_id) {
-          const { data: empData } = await supabase
+          const { data: employee } = await supabase
             .from('users')
             .select('id, name, email, designation')
             .eq('id', card.employee_id)
             .single();
-          employee = empData || null;
+          return { ...card, employee: employee || null };
         }
-        
-        // Transform to camelCase
-        return {
-          _id: card.id,
-          id: card.id,
-          employeeId: card.employee_id,
-          employerId: card.employer_id,
-          date: card.date,
-          hoursWorked: parseFloat(card.hours_worked || 0),
-          notes: card.notes || '',
-          isLocked: card.is_locked || false,
-          createdAt: card.created_at,
-          updatedAt: card.updated_at,
-          employee: employee ? {
-            _id: employee.id,
-            id: employee.id,
-            name: employee.name,
-            email: employee.email,
-            designation: employee.designation
-          } : null
-        };
+        return card;
       })
     );
 
@@ -396,7 +333,6 @@ router.get('/employer/weekly-summary', protect, authorize('employer'), async (re
         const emp = employeeMap[empId] || {};
         summary[empId] = {
           employee: {
-            _id: emp.id || empId,
             id: emp.id || empId,
             name: emp.name || 'Unknown',
             email: emp.email || '',
@@ -407,12 +343,9 @@ router.get('/employer/weekly-summary', protect, authorize('employer'), async (re
         };
       }
       summary[empId].entries.push({
-        _id: card.id,
-        id: card.id,
         date: card.date,
-        hoursWorked: parseFloat(card.hours_worked || 0),
-        notes: card.notes || '',
-        isLocked: card.is_locked || false
+        hoursWorked: parseFloat(card.hours_worked),
+        notes: card.notes
       });
       summary[empId].totalHours += parseFloat(card.hours_worked || 0);
     });
@@ -478,7 +411,7 @@ router.get('/admin/all-entries', protect, authorize('admin'), async (req, res) =
       ...uniqueEmployeeIds.map(async (empId) => {
         const { data: employee } = await supabase
           .from('users')
-          .select('id, name, email, designation, department, hourly_pay')
+          .select('id, name, email, designation, department')
           .eq('id', empId)
           .single();
         if (employee) employeeMap[empId] = employee;
@@ -493,33 +426,10 @@ router.get('/admin/all-entries', protect, authorize('admin'), async (req, res) =
       })
     ]);
 
-    // Transform to camelCase
     const timeCardsWithRelations = (timeCards || []).map(card => ({
-      _id: card.id,
-      id: card.id,
-      employeeId: card.employee_id,
-      employerId: card.employer_id,
-      date: card.date,
-      hoursWorked: parseFloat(card.hours_worked || 0),
-      notes: card.notes || '',
-      isLocked: card.is_locked || false,
-      createdAt: card.created_at,
-      updatedAt: card.updated_at,
-      employee: employeeMap[card.employee_id] ? {
-        _id: employeeMap[card.employee_id].id,
-        id: employeeMap[card.employee_id].id,
-        name: employeeMap[card.employee_id].name,
-        email: employeeMap[card.employee_id].email,
-        designation: employeeMap[card.employee_id].designation,
-        department: employeeMap[card.employee_id].department,
-        hourlyPay: parseFloat(employeeMap[card.employee_id].hourly_pay || 0)
-      } : null,
-      employer: employerMap[card.employer_id] ? {
-        _id: employerMap[card.employer_id].id,
-        id: employerMap[card.employer_id].id,
-        name: employerMap[card.employer_id].name,
-        email: employerMap[card.employer_id].email
-      } : null
+      ...card,
+      employee: employeeMap[card.employee_id] || null,
+      employer: employerMap[card.employer_id] || null
     }));
 
     // Calculate total hours
@@ -533,95 +443,6 @@ router.get('/admin/all-entries', protect, authorize('admin'), async (req, res) =
     });
   } catch (error) {
     console.error('Error fetching admin timecards:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-/**
- * ADMIN: Get monthly aggregated timecards for employees and managers
- * GET /api/timecards/admin/monthly-summary
- */
-router.get('/admin/monthly-summary', protect, authorize('admin'), async (req, res) => {
-  try {
-    const { month, year } = req.query; // Format: month="01", year="2026"
-    
-    if (!month || !year) {
-      return res.status(400).json({ message: 'Month and year are required' });
-    }
-
-    // Calculate date range for the selected month
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-
-    // Fetch all timecards for the month
-    const { data: timeCards, error } = await supabase
-      .from('time_cards')
-      .select('*')
-      .gte('date', startDate.toISOString().split('T')[0])
-      .lte('date', endDate.toISOString().split('T')[0]);
-
-    if (error) throw error;
-
-    // Get unique user IDs (both employees and managers who logged time)
-    const uniqueUserIds = [...new Set((timeCards || []).map(c => c.employee_id).filter(Boolean))];
-    
-    // Fetch user info for all users who have timecards (employees and managers)
-    const userMap = {};
-    await Promise.all(
-      uniqueUserIds.map(async (userId) => {
-        const { data: user } = await supabase
-          .from('users')
-          .select('id, name, email, role, designation, department, hourly_pay')
-          .eq('id', userId)
-          .single();
-        if (user) userMap[userId] = user;
-      })
-    );
-
-    // Aggregate hours by user (only for employees and managers, not admins)
-    const monthlySummary = {};
-    (timeCards || []).forEach(card => {
-      const userId = card.employee_id;
-      const user = userMap[userId];
-      
-      // Only include employees and managers
-      if (user && (user.role === 'employee' || user.role === 'employer')) {
-        if (!monthlySummary[userId]) {
-          monthlySummary[userId] = {
-            userId: userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            designation: user.designation || '',
-            department: user.department || '',
-            hourlyPay: parseFloat(user.hourly_pay || 0),
-            totalHours: 0
-          };
-        }
-        monthlySummary[userId].totalHours += parseFloat(card.hours_worked || 0);
-      }
-    });
-
-    // Convert to array and calculate total pay
-    const summaryArray = Object.values(monthlySummary).map(item => ({
-      ...item,
-      totalPay: item.hourlyPay * item.totalHours
-    })).sort((a, b) => a.name.localeCompare(b.name));
-
-    // Calculate totals
-    const totalHours = summaryArray.reduce((sum, item) => sum + item.totalHours, 0);
-    const totalPay = summaryArray.reduce((sum, item) => sum + item.totalPay, 0);
-
-    res.status(200).json({
-      success: true,
-      month: `${year}-${String(month).padStart(2, '0')}`,
-      count: summaryArray.length,
-      totalHours: Math.round(totalHours * 100) / 100,
-      totalPay: Math.round(totalPay * 100) / 100,
-      timecards: summaryArray
-    });
-  } catch (error) {
-    console.error('Error fetching monthly summary:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

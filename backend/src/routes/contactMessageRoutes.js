@@ -4,22 +4,8 @@ import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
-// Transform message from DB format to frontend format
-const transformMessage = (msg) => ({
-  _id: msg.id,
-  id: msg.id,
-  name: msg.name,
-  email: msg.email,
-  phone: msg.phone,
-  message: msg.message,
-  status: msg.status,
-  submittedAt: msg.submitted_at,
-  createdAt: msg.created_at,
-  updatedAt: msg.updated_at
-});
-
 // @route   POST /api/contact-messages
-// @desc    Submit a new contact message (PUBLIC)
+// @desc    Submit a new contact message
 // @access  Public
 router.post('/', async (req, res) => {
   try {
@@ -57,7 +43,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Thank you for contacting us! We will get back to you soon.',
-      data: transformMessage(contactMessage),
+      data: contactMessage,
     });
   } catch (error) {
     console.error('Error creating contact message:', error);
@@ -73,7 +59,7 @@ router.post('/', async (req, res) => {
 // @access  Private/Admin
 router.get('/', protect, authorize('admin'), async (req, res) => {
   try {
-    const { status, page = 1, limit = 50, sort = '-submitted_at' } = req.query;
+    const { status, page = 1, limit = 20, sort = 'submitted_at' } = req.query;
     
     // Build count query separately
     let countQuery = supabase.from('contact_messages').select('*', { count: 'exact', head: true });
@@ -90,14 +76,11 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       query = query.eq('status', status);
     }
     
-    // Handle sorting (default: newest first)
-    const isDescending = sort.startsWith('-');
-    let sortField = sort.replace('-', '');
-    // Map camelCase to snake_case for DB
-    if (sortField === 'submittedAt') sortField = 'submitted_at';
-    if (sortField === 'createdAt') sortField = 'created_at';
-    
-    query = query.order(sortField, { ascending: !isDescending });
+    // Handle sorting (convert Mongoose format to Supabase)
+    // submitted_at is the snake_case field name in Supabase
+    const sortField = sort === 'submittedAt' || sort === '-submittedAt' ? 'submitted_at' : sort.replace('-', '');
+    const sortOrder = sort.startsWith('-') ? 'desc' : 'asc';
+    query = query.order(sortField, { ascending: sortOrder === 'asc' });
     
     // Pagination
     const limitNum = parseInt(limit);
@@ -115,12 +98,9 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       });
     }
 
-    // Transform all messages to frontend format
-    const transformedMessages = (messages || []).map(transformMessage);
-
     res.json({
       success: true,
-      data: transformedMessages,
+      data: messages || [],
       totalPages: Math.ceil((count || 0) / limitNum),
       currentPage: pageNum,
       total: count || 0,
@@ -154,7 +134,7 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
 
     res.json({
       success: true,
-      data: transformMessage(message),
+      data: message,
     });
   } catch (error) {
     console.error('Error fetching contact message:', error);
@@ -171,15 +151,6 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
 router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
     const { status } = req.body;
-    
-    // Validate status
-    const validStatuses = ['new', 'read', 'replied', 'archived'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status. Must be one of: new, read, replied, archived',
-      });
-    }
     
     const { data: message, error } = await supabase
       .from('contact_messages')
@@ -198,7 +169,7 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
     res.json({
       success: true,
       message: 'Contact message status updated',
-      data: transformMessage(message),
+      data: message,
     });
   } catch (error) {
     console.error('Error updating contact message:', error);
@@ -237,44 +208,6 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting contact message',
-    });
-  }
-});
-
-// @route   GET /api/contact-messages/stats/summary
-// @desc    Get contact message statistics (admin only)
-// @access  Private/Admin
-router.get('/stats/summary', protect, authorize('admin'), async (req, res) => {
-  try {
-    const { data: messages, error } = await supabase
-      .from('contact_messages')
-      .select('status');
-
-    if (error) {
-      console.error('Error fetching contact message stats:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Error fetching statistics',
-      });
-    }
-
-    const stats = {
-      total: messages.length,
-      new: messages.filter(m => m.status === 'new').length,
-      read: messages.filter(m => m.status === 'read').length,
-      replied: messages.filter(m => m.status === 'replied').length,
-      archived: messages.filter(m => m.status === 'archived').length,
-    };
-
-    res.json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    console.error('Error fetching contact message stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching statistics',
     });
   }
 });

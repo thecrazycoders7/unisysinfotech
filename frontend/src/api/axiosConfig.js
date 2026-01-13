@@ -23,25 +23,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   response => response,
   error => {
-    // Don't redirect on 401 for login/auth endpoints - let the component handle the error
-    const isAuthEndpoint = error.config?.url?.includes('/auth/login') || 
-                           error.config?.url?.includes('/auth/forgot-password') ||
-                           error.config?.url?.includes('/auth/reset-password');
-    
-    if (error.response?.status === 401 && !isAuthEndpoint) {
-      // Only logout and redirect for non-auth endpoints (e.g., expired token on protected routes)
+    if (error.response?.status === 401) {
       useAuthStore.getState().logout();
-      // Get the current path to determine which login page to redirect to
-      const path = window.location.pathname;
-      if (path.includes('/admin')) {
-        window.location.href = '/login/admin';
-      } else if (path.includes('/employer')) {
-        window.location.href = '/login/employer';
-      } else if (path.includes('/employee')) {
-        window.location.href = '/login/employee';
-      } else {
-        window.location.href = '/login/employee';
-      }
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

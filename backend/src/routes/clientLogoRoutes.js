@@ -4,26 +4,6 @@ import supabase from '../config/supabase.js';
 
 const router = express.Router();
 
-/**
- * Transform Supabase snake_case to frontend camelCase
- * Also adds _id alias for compatibility
- */
-const transformLogo = (logo) => ({
-  _id: logo.id,
-  id: logo.id,
-  name: logo.name,
-  industry: logo.industry,
-  logoUrl: logo.logo_url,
-  description: logo.description || '',
-  founded: logo.founded || '',
-  headquarters: logo.headquarters || '',
-  trustSignal: logo.trust_signal || '',
-  displayOrder: logo.display_order || 0,
-  isActive: logo.is_active,
-  createdAt: logo.created_at,
-  updatedAt: logo.updated_at
-});
-
 // Get all active client logos (public)
 router.get('/', async (req, res) => {
   try {
@@ -39,9 +19,7 @@ router.get('/', async (req, res) => {
       return res.status(500).json({ message: 'Error fetching client logos', error: error.message });
     }
     
-    // Transform to camelCase for frontend
-    const transformedLogos = (logos || []).map(transformLogo);
-    res.json(transformedLogos);
+    res.json(logos || []);
   } catch (error) {
     console.error('Error fetching logos:', error);
     res.status(500).json({ message: 'Error fetching client logos', error: error.message });
@@ -62,9 +40,7 @@ router.get('/all', protect, authorize('admin'), async (req, res) => {
       return res.status(500).json({ message: 'Error fetching client logos', error: error.message });
     }
     
-    // Transform to camelCase for frontend
-    const transformedLogos = (logos || []).map(transformLogo);
-    res.json(transformedLogos);
+    res.json(logos || []);
   } catch (error) {
     console.error('Error fetching logos:', error);
     res.status(500).json({ message: 'Error fetching client logos', error: error.message });
@@ -84,7 +60,7 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Client logo not found' });
     }
     
-    res.json(transformLogo(logo));
+    res.json(logo);
   } catch (error) {
     console.error('Error fetching logo:', error);
     res.status(500).json({ message: 'Error fetching client logo', error: error.message });
@@ -115,7 +91,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       return res.status(400).json({ message: 'Error creating client logo', error: error.message });
     }
     
-    res.status(201).json(transformLogo(logo));
+    res.status(201).json(logo);
   } catch (error) {
     console.error('Error creating logo:', error);
     res.status(400).json({ message: 'Error creating client logo', error: error.message });
@@ -125,7 +101,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
 // Update client logo (admin only)
 router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const updateData = { updated_at: new Date().toISOString() };
+    const updateData = {};
     if (req.body.name !== undefined) updateData.name = req.body.name;
     if (req.body.industry !== undefined) updateData.industry = req.body.industry;
     if (req.body.logoUrl !== undefined) updateData.logo_url = req.body.logoUrl;
@@ -150,7 +126,7 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
       return res.status(404).json({ message: 'Client logo not found' });
     }
 
-    res.json(transformLogo(logo));
+    res.json(logo);
   } catch (error) {
     console.error('Error updating logo:', error);
     res.status(400).json({ message: 'Error updating client logo', error: error.message });
@@ -171,7 +147,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       return res.status(404).json({ message: 'Client logo not found' });
     }
 
-    res.json({ message: 'Client logo deleted successfully', logo: transformLogo(logo) });
+    res.json({ message: 'Client logo deleted successfully' });
   } catch (error) {
     console.error('Error deleting logo:', error);
     res.status(500).json({ message: 'Error deleting client logo', error: error.message });

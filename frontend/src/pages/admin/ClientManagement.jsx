@@ -77,7 +77,7 @@ export const ClientManagement = () => {
 
   const handleEdit = (client) => {
     setFormData(client);
-    setEditingId(client._id || client.id);
+    setEditingId(client._id);
     setShowForm(true);
   };
 
@@ -301,10 +301,8 @@ export const ClientManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {clients.map((client) => {
-                    const clientId = client._id || client.id;
-                    return (
-                    <tr key={clientId} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                  {clients.map((client) => (
+                    <tr key={client._id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
                       <td className="p-4 font-medium text-white">{client.name}</td>
                       <td className="p-4 text-slate-200">{client.email}</td>
                       <td className="p-4 text-white">{client.industry}</td>
@@ -315,7 +313,7 @@ export const ClientManagement = () => {
                       <td className="p-4">
                         <button
                           onClick={async () => {
-                            await clientAPI.update(clientId, { status: client.status === 'active' ? 'inactive' : 'active' });
+                            await clientAPI.update(client._id, { status: client.status === 'active' ? 'inactive' : 'active' });
                             fetchClients();
                           }}
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${client.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
@@ -332,7 +330,7 @@ export const ClientManagement = () => {
                           <Edit2 size={18} />
                         </button>
                         <button
-                          onClick={() => handleDelete(clientId)}
+                          onClick={() => handleDelete(client._id)}
                           className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-300"
                           title="Delete Client"
                         >
@@ -340,8 +338,7 @@ export const ClientManagement = () => {
                         </button>
                       </td>
                     </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>
