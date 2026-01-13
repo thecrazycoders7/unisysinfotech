@@ -59,7 +59,6 @@ import { JobApplications } from './pages/admin/JobApplications.jsx';
 import { AdminUserManagement } from './pages/admin/AdminUserManagement.jsx';
 import { ContactMessages } from './pages/admin/ContactMessages.jsx';
 import { InvoicesPayroll } from './pages/admin/InvoicesPayroll.jsx';
-import { PasswordChangeApproval } from './pages/admin/PasswordChangeApproval.jsx';
 import { TimecardsManagement } from './pages/admin/TimecardsManagement.jsx';
 
 // Common Pages
@@ -129,9 +128,7 @@ function App() {
             <Route path="/admin/job-applications" element={<JobApplications />} />
             <Route path="/admin/contact-messages" element={<ContactMessages />} />
             <Route path="/admin/invoices" element={<InvoicesPayroll />} />
-            <Route path="/admin/password-requests" element={<PasswordChangeApproval />} />
             <Route path="/admin/timecards" element={<TimecardsManagement />} />
-            <Route path="/admin/change-password" element={<ChangePassword />} />
           </Route>
 
           {/* Employer Portal */}

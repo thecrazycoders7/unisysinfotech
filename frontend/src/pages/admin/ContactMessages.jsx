@@ -3,6 +3,7 @@ import { Mail, Phone, Calendar, Eye, Trash2, CheckCircle, Clock, Search, Refresh
 import { contactMessageApi } from '../../api/endpoints.js';
 import { supabase } from '../../config/supabase.js';
 import { toast } from 'react-toastify';
+import { formatUSDateTime, getUSTimeAgo } from '../../utils/dateUtils.js';
 
 // Status configurations
 const statusConfig = {
@@ -165,30 +166,11 @@ export const ContactMessages = () => {
   };
 
   const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatUSDateTime(date);
   };
 
   const getTimeAgo = (date) => {
-    if (!date) return '';
-    const now = new Date();
-    const then = new Date(date);
-    const diffMs = now - then;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return formatDate(date);
+    return getUSTimeAgo(date);
   };
 
   // Filter messages by search term

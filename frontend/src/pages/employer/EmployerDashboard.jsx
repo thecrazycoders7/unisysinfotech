@@ -6,6 +6,7 @@ import { timeCardAPI } from '../../api/endpoints.js';
 import { supabase } from '../../config/supabase.js';
 import { toast } from 'react-toastify';
 import { Calendar, Users, Clock, ChevronLeft, ChevronRight, BarChart3, ArrowLeft, LogOut, Home, ClipboardList, Wifi, WifiOff } from 'lucide-react';
+import { formatUSDateRange } from '../../utils/dateUtils.js';
 
 /**
  * Employer Dashboard
@@ -162,7 +163,7 @@ export const EmployerDashboard = () => {
   const formatDateRange = () => {
     const endDate = new Date(currentWeekStart);
     endDate.setDate(endDate.getDate() + 6);
-    return `${currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    return formatUSDateRange(currentWeekStart, endDate);
   };
 
   const handleLogout = () => {

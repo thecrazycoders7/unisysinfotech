@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { invoiceAPI, clientAPI } from '../../api/endpoints.js';
+import { invoiceAPI, clientAPI, adminAPI } from '../../api/endpoints.js';
 import { toast } from 'react-toastify';
 import { Search, Filter, Plus, Edit, Eye, Trash2, DollarSign, Clock, AlertCircle, X, Save, ChevronDown } from 'lucide-react';
+import { formatUSDate } from '../../utils/dateUtils.js';
 
 export const InvoicesPayroll = () => {
   const [activeTab, setActiveTab] = useState('list');
@@ -14,6 +15,9 @@ export const InvoicesPayroll = () => {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [selectedUserHourlyPay, setSelectedUserHourlyPay] = useState(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
   
   // Filters
   const [filters, setFilters] = useState({
@@ -108,12 +112,51 @@ export const InvoicesPayroll = () => {
     }
   };
 
-  // Fetch clients when form opens
+  // Fetch clients and users when form opens
   useEffect(() => {
     if (showForm) {
       fetchClients();
+      fetchUsers();
     }
   }, [showForm]);
+
+  // Fetch users for hourly pay lookup
+  const fetchUsers = async () => {
+    try {
+      const response = await adminAPI.getUsers();
+      setUsers(response.data.users || []);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  // Auto-calculate invoice amount when name or hours change (only for new invoices)
+  useEffect(() => {
+    if (!editingInvoice && formData.name && formData.numberOfHours) {
+      const user = users.find(u => u.name === formData.name);
+      if (user && (user.role === 'employee' || user.role === 'employer')) {
+        const hourlyPay = user.hourlyPay || user.hourly_pay || 0;
+        setSelectedUserHourlyPay(hourlyPay);
+        if (hourlyPay > 0) {
+          const calculatedAmount = parseFloat(hourlyPay) * parseFloat(formData.numberOfHours);
+          setFormData(prev => ({ ...prev, invoiceAmount: calculatedAmount.toFixed(2) }));
+        }
+      } else {
+        setSelectedUserHourlyPay(null);
+      }
+    } else if (formData.name) {
+      // For editing, just show the hourly pay but don't auto-calculate
+      const user = users.find(u => u.name === formData.name);
+      if (user && (user.role === 'employee' || user.role === 'employer')) {
+        const hourlyPay = user.hourlyPay || user.hourly_pay || 0;
+        setSelectedUserHourlyPay(hourlyPay);
+      } else {
+        setSelectedUserHourlyPay(null);
+      }
+    } else {
+      setSelectedUserHourlyPay(null);
+    }
+  }, [formData.name, formData.numberOfHours, users, editingInvoice]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -138,6 +181,8 @@ export const InvoicesPayroll = () => {
 
   const handleEdit = async (invoice) => {
     setEditingInvoice(invoice);
+    // Fetch users to get hourly pay for the selected user
+    await fetchUsers();
     setFormData({
       name: invoice.name,
       payrollMonth: invoice.payrollMonth,
@@ -247,6 +292,7 @@ export const InvoicesPayroll = () => {
       notes: ''
     });
     setEditingInvoice(null);
+    setSelectedUserHourlyPay(null);
   };
 
   const getStatusColor = (status) => {
@@ -264,7 +310,64 @@ export const InvoicesPayroll = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#0f1d35] to-[#0a1628] p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className={`flex gap-6 max-w-[1800px] mx-auto ${activeTab === 'list' ? '' : 'max-w-7xl'}`}>
+        {/* Sidebar - Invoice List (only show on list tab) */}
+        {activeTab === 'list' && (
+          <div className="w-80 flex-shrink-0">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+              <h2 className="text-xl font-bold text-white mb-4">Invoices</h2>
+              {loading ? (
+                <div className="text-center py-8 text-slate-400">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+                  <p className="mt-2 text-sm">Loading...</p>
+                </div>
+              ) : invoices.length === 0 ? (
+                <div className="text-center py-8 text-slate-400">
+                  <p className="text-sm">No invoices found</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {invoices.map((invoice) => (
+                    <button
+                      key={invoice._id}
+                      onClick={() => {
+                        setSelectedInvoiceId(invoice._id);
+                        // Scroll to the invoice in the table
+                        setTimeout(() => {
+                          const element = document.getElementById(`invoice-${invoice._id}`);
+                          if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }, 100);
+                      }}
+                      className={`w-full text-left p-3 rounded-lg transition-all ${
+                        selectedInvoiceId === invoice._id
+                          ? 'bg-blue-600/30 border border-blue-500/50'
+                          : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white font-semibold text-sm truncate">{invoice.name || 'Unknown'}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border flex-shrink-0 ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-400 truncate">
+                        {invoice.invoiceNumber} • {invoice.payrollMonth}
+                      </div>
+                      <div className="text-xs text-emerald-400 font-medium mt-1">
+                        ${(invoice.invoiceAmount || 0).toLocaleString()}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Invoices & Payroll</h1>
@@ -383,7 +486,14 @@ export const InvoicesPayroll = () => {
                       </tr>
                     ) : (
                       invoices.map((invoice, index) => (
-                        <tr key={invoice._id} className="hover:bg-slate-700/20 transition-all duration-200 group">
+                        <tr 
+                          id={`invoice-${invoice._id}`}
+                          key={invoice._id} 
+                          onClick={() => setSelectedInvoiceId(invoice._id)}
+                          className={`hover:bg-slate-700/20 transition-all duration-200 group cursor-pointer ${
+                            selectedInvoiceId === invoice._id ? 'bg-blue-600/20 border-l-4 border-blue-500' : ''
+                          }`}
+                        >
                           <td className="px-6 py-5">
                             <span className="text-slate-300">{invoice.endClient || <span className="text-slate-500">-</span>}</span>
                           </td>
@@ -419,7 +529,7 @@ export const InvoicesPayroll = () => {
                             </span>
                           </td>
                           <td className="px-6 py-5 text-slate-300 font-medium">
-                            {invoice.paymentReceivedDate ? new Date(invoice.paymentReceivedDate).toLocaleDateString() : <span className="text-slate-500">-</span>}
+                            {invoice.paymentReceivedDate ? formatUSDate(invoice.paymentReceivedDate) : <span className="text-slate-500">-</span>}
                           </td>
                           <td className="px-6 py-5">
                             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -522,13 +632,29 @@ export const InvoicesPayroll = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Name *</label>
-                    <input
-                      type="text"
+                    <select
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                    />
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value, invoiceAmount: '' })}
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                    >
+                      <option value="" className="bg-slate-800">Select Employee/Employer</option>
+                      {users.filter(u => u.role === 'employee' || u.role === 'employer').map(user => (
+                        <option key={user._id || user.id} value={user.name} className="bg-slate-800">
+                          {user.name} ({user.role}) - ${user.hourlyPay || user.hourly_pay || 0}/hr
+                        </option>
+                      ))}
+                    </select>
+                    {selectedUserHourlyPay !== null && (
+                      <p className="text-xs text-blue-400 mt-1">
+                        Hourly Rate: ${selectedUserHourlyPay}/hr
+                      </p>
+                    )}
+                    {formData.name && selectedUserHourlyPay === null && (
+                      <p className="text-xs text-yellow-400 mt-1">
+                        Warning: Selected user doesn't have hourly pay set. Please set it in User Management.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Payroll Month *</label>
@@ -567,18 +693,6 @@ export const InvoicesPayroll = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Invoice Amount *</label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="0.01"
-                      value={formData.invoiceAmount}
-                      onChange={(e) => setFormData({ ...formData, invoiceAmount: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Number of Hours *</label>
                     <input
                       type="number"
@@ -589,6 +703,24 @@ export const InvoicesPayroll = () => {
                       onChange={(e) => setFormData({ ...formData, numberOfHours: e.target.value })}
                       className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Invoice Amount *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={formData.invoiceAmount}
+                      onChange={(e) => setFormData({ ...formData, invoiceAmount: e.target.value })}
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                      readOnly={selectedUserHourlyPay !== null && formData.numberOfHours && !editingInvoice}
+                    />
+                    {selectedUserHourlyPay !== null && formData.numberOfHours && (
+                      <p className="text-xs text-green-400 mt-1">
+                        Auto-calculated: ${selectedUserHourlyPay} × {formData.numberOfHours} hours
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -988,6 +1120,7 @@ export const InvoicesPayroll = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

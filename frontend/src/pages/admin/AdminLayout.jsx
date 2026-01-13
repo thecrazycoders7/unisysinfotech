@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/index.js';
 import { useAuthStore } from '../../store/index.js';
-import { LayoutDashboard, Users, BarChart3, LogOut, Image, Briefcase, UserCog, ArrowLeft, Mail, Receipt, Lock, Shield, Menu, X, Clock, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, LogOut, Image, Briefcase, UserCog, ArrowLeft, Mail, Receipt, Menu, X, Clock, FileText } from 'lucide-react';
 
 const AdminLayout = () => {
   const isDark = useThemeStore((state) => state.isDark);
@@ -190,33 +190,7 @@ const AdminLayout = () => {
             }`}
           >
             <Receipt size={20} />
-            <span className="text-sm lg:text-base">Invoices & Payroll</span>
-          </Link>
-
-          <Link
-            to="/admin/password-requests"
-            onClick={closeSidebar}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              isActive('/admin/password-requests')
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:bg-white/10'
-            }`}
-          >
-            <Shield size={20} />
-            <span className="text-sm lg:text-base">Password Requests</span>
-          </Link>
-
-          <Link
-            to="/admin/change-password"
-            onClick={closeSidebar}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              isActive('/admin/change-password')
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:bg-white/10'
-            }`}
-          >
-            <Lock size={20} />
-            <span className="text-sm lg:text-base">Change Password</span>
+            <span className="text-sm lg:text-base">Invoice</span>
           </Link>
         </nav>
 

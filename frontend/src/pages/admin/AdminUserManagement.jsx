@@ -148,8 +148,15 @@ export const AdminUserManagement = () => {
         role: formData.role,
         designation: formData.designation || undefined,
         department: formData.department || undefined,
-        hourlyPay: formData.hourlyPay ? parseFloat(formData.hourlyPay) : undefined
+        hourlyPay: formData.hourlyPay ? parseFloat(formData.hourlyPay) : (formData.role === 'employee' || formData.role === 'employer' ? 0 : undefined)
       };
+      
+      // Validate hourlyPay is required for employee/employer
+      if ((formData.role === 'employee' || formData.role === 'employer') && (!formData.hourlyPay || parseFloat(formData.hourlyPay) <= 0)) {
+        toast.error('Hourly Pay is required and must be greater than 0 for employees and employers');
+        setSaving(false);
+        return;
+      }
 
       if (formData.role === 'employee' && formData.employerId) {
         payload.employerId = formData.employerId;
@@ -179,8 +186,15 @@ export const AdminUserManagement = () => {
         name: formData.name,
         designation: formData.designation || undefined,
         department: formData.department || undefined,
-        hourlyPay: formData.hourlyPay ? parseFloat(formData.hourlyPay) : undefined
+        hourlyPay: formData.hourlyPay ? parseFloat(formData.hourlyPay) : (editingUser.role === 'employee' || editingUser.role === 'employer' ? 0 : undefined)
       };
+      
+      // Validate hourlyPay is required for employee/employer
+      if ((editingUser.role === 'employee' || editingUser.role === 'employer') && (!formData.hourlyPay || parseFloat(formData.hourlyPay) <= 0)) {
+        toast.error('Hourly Pay is required and must be greater than 0 for employees and employers');
+        setSaving(false);
+        return;
+      }
 
       // Only allow changing employer assignment for employees
       if (editingUser.role === 'employee' && formData.employerId) {

@@ -4,8 +4,9 @@ import { supabase } from '../../config/supabase.js';
 import { toast } from 'react-toastify';
 import { 
   FileText, Download, ExternalLink, Star, CheckCircle, XCircle, Clock, Loader2, 
-  RefreshCw, Briefcase, Search, Filter, Users, Eye, Wifi, WifiOff, X, ChevronDown, Mail, Phone, MapPin
+  RefreshCw, Briefcase, Search, Filter, Users, Eye, Wifi, WifiOff, X, ChevronDown, Mail, Phone, MapPin, AlertTriangle
 } from 'lucide-react';
+import { formatUSDate } from '../../utils/dateUtils.js';
 
 // Status badge colors
 const statusColors = {
@@ -171,6 +172,20 @@ export const JobApplications = () => {
     acc[jobKey].push(app);
     return acc;
   }, {});
+
+  // Calculate days until resume deletion (45 days from applied date)
+  const getDaysUntilDeletion = (appliedDate) => {
+    if (!appliedDate) return null;
+    const applied = new Date(appliedDate);
+    const deletionDate = new Date(applied);
+    deletionDate.setDate(deletionDate.getDate() + 45);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deletionDate.setHours(0, 0, 0, 0);
+    const diffTime = deletionDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
 
   // Stats
   const stats = {
@@ -392,11 +407,40 @@ export const JobApplications = () => {
                             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-400">
                               <span><strong className="text-slate-300">Experience:</strong> {app.experience}</span>
                               <span><strong className="text-slate-300">Notice:</strong> {app.noticePeriod}</span>
-                              <span><strong className="text-slate-300">Applied:</strong> {new Date(app.appliedDate).toLocaleDateString()}</span>
+                              <span><strong className="text-slate-300">Applied:</strong> {formatUSDate(app.appliedDate)}</span>
                               {app.currentCompany && (
                                 <span><strong className="text-slate-300">Current:</strong> {app.currentRole} at {app.currentCompany}</span>
                               )}
                             </div>
+                            
+                            {/* Resume Deletion Countdown */}
+                            {app.resumeUrl && app.appliedDate && (() => {
+                              const daysRemaining = getDaysUntilDeletion(app.appliedDate);
+                              if (daysRemaining !== null && daysRemaining <= 45 && daysRemaining >= 0) {
+                                const isUrgent = daysRemaining <= 7;
+                                const isWarning = daysRemaining <= 14;
+                                return (
+                                  <div className={`mt-3 px-3 py-2 rounded-lg border text-sm flex items-center gap-2 ${
+                                    isUrgent
+                                      ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                                      : isWarning
+                                      ? 'bg-orange-500/10 border-orange-500/30 text-orange-400'
+                                      : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                                  }`}>
+                                    <AlertTriangle size={14} />
+                                    <span>
+                                      <strong>Resume deletion:</strong>{' '}
+                                      {daysRemaining === 0
+                                        ? 'Deleting today'
+                                        : daysRemaining === 1
+                                        ? 'Deleting tomorrow'
+                                        : `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
 
                           {/* Actions */}
