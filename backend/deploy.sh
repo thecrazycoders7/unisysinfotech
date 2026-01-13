@@ -42,3 +42,5 @@ echo "   3. Test health endpoint: curl \$(eb status | grep CNAME | awk '{print \
 
 
 
+
+

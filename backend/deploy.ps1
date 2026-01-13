@@ -57,3 +57,5 @@ Write-Host "   3. Test health endpoint: curl (eb status | Select-String 'CNAME')
 
 
 
+
+
